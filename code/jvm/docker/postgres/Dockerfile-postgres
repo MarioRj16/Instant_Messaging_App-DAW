@@ -1,0 +1,14 @@
+FROM postgres:15-alpine
+
+USER postgres
+WORKDIR /app
+
+COPY sql/create.sql /docker-entrypoint-initdb.d/1_create.sql
+
+# Optional: If you want to load test data in production for testing/demo purposes
+# COPY sql/insert-data.sql /docker-entrypoint-initdb.d/insert-data.sql
+
+COPY --chown=postgres:postgres scripts/wait-for-postgres.sh ./bin/wait-for-postgres.sh
+RUN chmod +x ./bin/wait-for-postgres.sh
+
+EXPOSE 5432
