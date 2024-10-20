@@ -9,6 +9,7 @@ import com.example.messagingapp.http.model.input.LoginInputModel
 import com.example.messagingapp.http.model.input.UserCreateInputModel
 import com.example.messagingapp.http.model.output.LoginOutputModel
 import com.example.messagingapp.http.model.output.RegistrationInvitationCreateOutputModel
+import com.example.messagingapp.http.model.output.UserCreateOuputModel
 import com.example.messagingapp.http.model.output.UserProfileOutputModel
 import com.example.messagingapp.services.TokenCreationError
 import com.example.messagingapp.services.UserCreationError
@@ -29,7 +30,7 @@ class UserController(
     @PostMapping(Uris.Users.REGISTER)
     fun register(
         @RequestBody input: UserCreateInputModel,
-    ): ResponseEntity<Int> {
+    ): ResponseEntity<UserCreateOuputModel> {
         return when (
             val res =
                 userService.createUser(
@@ -39,7 +40,7 @@ class UserController(
                     input.email,
                 )
         ) {
-            is Success -> ResponseEntity(res.value, HttpStatus.CREATED)
+            is Success -> ResponseEntity(UserCreateOuputModel(res.value), HttpStatus.CREATED)
             is Failure ->
                 when (res.value) {
                     UserCreationError.InvitationIsNotValid -> ResponseEntity(HttpStatus.BAD_REQUEST)
@@ -55,13 +56,13 @@ class UserController(
     @PostMapping(Uris.Users.LOGIN)
     fun login(
         @RequestBody user: LoginInputModel,
-    ): ResponseEntity<*> =
+    ): ResponseEntity<LoginOutputModel> =
         when (val res = userService.createToken(user.username, user.password)) {
             is Success -> ResponseEntity(LoginOutputModel(res.value), HttpStatus.OK)
             is Failure ->
                 when (res.value) {
-                    TokenCreationError.UserOrPasswordIsInvalid -> ResponseEntity(res.value, HttpStatus.UNAUTHORIZED)
-                    TokenCreationError.UserIsNotRegistered -> ResponseEntity(res.value, HttpStatus.UNAUTHORIZED)
+                    TokenCreationError.UserOrPasswordIsInvalid -> ResponseEntity(HttpStatus.UNAUTHORIZED)
+                    TokenCreationError.UserIsNotRegistered -> ResponseEntity(HttpStatus.UNAUTHORIZED)
                 }
         }
 
