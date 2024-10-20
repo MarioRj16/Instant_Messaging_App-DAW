@@ -16,6 +16,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder
 import org.springframework.web.method.support.HandlerMethodArgumentResolver
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer
+import java.util.Locale
 import kotlin.time.Duration.Companion.hours
 
 @SpringBootApplication
@@ -63,5 +64,6 @@ class PipelineConfigurer(
 }
 
 fun main(args: Array<String>) {
+    Locale.setDefault(Locale.ENGLISH)
     runApplication<MessagingAppApplication>(*args)
 }

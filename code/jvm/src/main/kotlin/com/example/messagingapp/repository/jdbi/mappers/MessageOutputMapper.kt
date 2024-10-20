@@ -1,22 +1,23 @@
 package com.example.messagingapp.repository.jdbi.mappers
 
-import com.example.messagingapp.http.model.MessageOutput
-import com.example.messagingapp.http.model.SenderInfoOutput
+import com.example.messagingapp.http.model.output.MessageOutputModel
+import com.example.messagingapp.http.model.output.SenderInfoOutputModel
+import kotlinx.datetime.Instant
 import org.jdbi.v3.core.mapper.RowMapper
 import org.jdbi.v3.core.statement.StatementContext
 import java.sql.ResultSet
 
-class MessageOutputMapper : RowMapper<MessageOutput> {
+class MessageOutputMapper : RowMapper<MessageOutputModel> {
     override fun map(
         rs: ResultSet,
         ctx: StatementContext,
-    ): MessageOutput {
-        return MessageOutput(
+    ): MessageOutputModel {
+        return MessageOutputModel(
             rs.getInt("message_id"),
-            SenderInfoOutput(rs.getInt("sender_id"), rs.getString("sender_name")),
+            SenderInfoOutputModel(rs.getInt("sender_id"), rs.getString("sender_name")),
             rs.getInt("channel_id"),
             rs.getString("content"),
-            rs.getLong("created_at"),
+            Instant.fromEpochSeconds(rs.getLong("created_at")).toString(),
         )
     }
 }

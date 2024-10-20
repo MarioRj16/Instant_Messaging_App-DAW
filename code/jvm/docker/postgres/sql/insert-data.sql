@@ -5,4 +5,4 @@ VALUES
 
 INSERT INTO registration_invitation (invitation_token, inviter_id, created_at, status)
 VALUES
-    ('f7b3b3b4-1b3b-4b3b-8b3b-3b3b3b3b3b3b', 1, '2021-01-01 00:00:00', 'pending');
+    ('f7b3b3b4-1b3b-4b3b-8b3b-3b3b3b3b3b3b', 1, '1729382400', 'pending');

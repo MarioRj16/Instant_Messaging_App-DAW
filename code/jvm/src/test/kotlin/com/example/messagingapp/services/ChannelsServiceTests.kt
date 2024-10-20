@@ -10,10 +10,10 @@ import com.example.messagingapp.domain.UserDomainConfig
 import com.example.messagingapp.generateRandomEmail
 import com.example.messagingapp.generateRandomMessage
 import com.example.messagingapp.generateRandomString
-import com.example.messagingapp.http.model.ChannelInvitationOutput
-import com.example.messagingapp.http.model.ChannelWithMembership
-import com.example.messagingapp.http.model.MembershipOutput
-import com.example.messagingapp.http.model.MessageOutput
+import com.example.messagingapp.http.model.output.ChannelInvitationOutputModel
+import com.example.messagingapp.http.model.output.ChannelWithMembershipOutputModel
+import com.example.messagingapp.http.model.output.MembershipOutputModel
+import com.example.messagingapp.http.model.output.MessageOutputModel
 import com.example.messagingapp.repository.jdbi.JdbiTransactionManager
 import com.example.messagingapp.repository.jdbi.configureWithAppRequirements
 import com.example.messagingapp.utils.Either
@@ -57,7 +57,7 @@ class ChannelsServiceTests {
         when (val channelGetResult = channelsService.getChannel(channelId.toLong(), userId)) {
             is Either.Left -> throw AssertionError("Channel get failed: ${channelGetResult.value}")
             is Either.Right -> {
-                assertIs<ChannelWithMembership>(channelGetResult.value)
+                assertIs<ChannelWithMembershipOutputModel>(channelGetResult.value)
                 assertTrue { channelGetResult.value.isMember }
                 assertEquals(channelGetResult.value.channelId, channelId)
                 assertEquals(channelGetResult.value.ownerId, userId)
@@ -76,7 +76,7 @@ class ChannelsServiceTests {
         when (val channelGetResult = channelsService.getJoinedChannels(userId)) {
             is Either.Left -> throw AssertionError("Channel get failed: ${channelGetResult.value}")
             is Either.Right -> {
-                assertIs<List<ChannelWithMembership>>(channelGetResult.value)
+                assertIs<List<ChannelWithMembershipOutputModel>>(channelGetResult.value)
                 assertEquals(1, channelGetResult.value.size)
                 assertTrue { channelGetResult.value[0].isMember }
                 assertEquals(channelGetResult.value[0].channelId, channelId)
@@ -95,7 +95,7 @@ class ChannelsServiceTests {
         when (val searchResult = channelsService.searchChannels(userId)) {
             is Either.Left -> throw AssertionError("Search failed: ${searchResult.value}")
             is Either.Right -> {
-                assertIs<List<ChannelWithMembership>>(searchResult.value)
+                assertIs<List<ChannelWithMembershipOutputModel>>(searchResult.value)
                 assertTrue { 1 <= searchResult.value.size }
             }
         }
@@ -145,7 +145,7 @@ class ChannelsServiceTests {
         when (val messagesResult = channelsService.getMessages(channelId.toLong(), userId)) {
             is Either.Left -> throw AssertionError("Getting messages failed: ${messagesResult.value}")
             is Either.Right -> {
-                assertIs<List<MessageOutput>>(messagesResult.value)
+                assertIs<List<MessageOutputModel>>(messagesResult.value)
                 assertEquals(2, messagesResult.value.size)
                 assertEquals(message, messagesResult.value[0].content)
             }
@@ -188,7 +188,7 @@ class ChannelsServiceTests {
         when (val invitationsResult = channelsService.getInvitations(inviteeId)) {
             is Either.Left -> throw AssertionError("Getting invitations failed: ${invitationsResult.value}")
             is Either.Right -> {
-                assertIs<List<ChannelInvitationOutput>>(invitationsResult.value)
+                assertIs<List<ChannelInvitationOutputModel>>(invitationsResult.value)
                 assertEquals(1, invitationsResult.value.size)
                 assertEquals(invitationsResult.value[0].channelId, channelId)
                 assertEquals(invitationsResult.value[0].inviterId, userId)
@@ -298,7 +298,7 @@ class ChannelsServiceTests {
         when (val messagesResult = channelsService.getMessages(channelId.toLong(), userId)) {
             is Either.Left -> throw AssertionError("Getting messages failed: ${messagesResult.value}")
             is Either.Right -> {
-                assertIs<List<MessageOutput>>(messagesResult.value)
+                assertIs<List<MessageOutputModel>>(messagesResult.value)
                 assertEquals(1, messagesResult.value.size)
                 assertEquals(message, messagesResult.value[0].content)
             }
@@ -335,7 +335,7 @@ class ChannelsServiceTests {
         when (val messagesResult = channelsService.getMessages(channelId.toLong(), userId)) {
             is Either.Left -> throw AssertionError("Getting messages failed: ${messagesResult.value}")
             is Either.Right -> {
-                assertIs<List<MessageOutput>>(messagesResult.value)
+                assertIs<List<MessageOutputModel>>(messagesResult.value)
                 assertEquals(3, messagesResult.value.size)
                 assertEquals(message, messagesResult.value[2].content)
                 assertEquals(message2, messagesResult.value[1].content)
@@ -353,7 +353,7 @@ class ChannelsServiceTests {
         when (val membershipResult = channelsService.getMembership(channelId.toLong(), userId)) {
             is Either.Left -> throw AssertionError("Getting membership failed: ${membershipResult.value}")
             is Either.Right -> {
-                assertIs<MembershipOutput>(membershipResult.value)
+                assertIs<MembershipOutputModel>(membershipResult.value)
                 assertEquals(MembershipRole.OWNER, membershipResult.value.role)
             }
         }
@@ -385,7 +385,7 @@ class ChannelsServiceTests {
         when (val membershipsResult = channelsService.getMemberships(channelId.toLong(), userId)) {
             is Either.Left -> throw AssertionError("Getting memberships failed: ${membershipsResult.value}")
             is Either.Right -> {
-                assertIs<List<MembershipOutput>>(membershipsResult.value)
+                assertIs<List<MembershipOutputModel>>(membershipsResult.value)
                 assertEquals(2, membershipsResult.value.size)
                 assertEquals(MembershipRole.OWNER, membershipsResult.value[0].role)
                 assertEquals(MembershipRole.MEMBER, membershipsResult.value[1].role)
@@ -425,7 +425,7 @@ class ChannelsServiceTests {
         when (val membershipsResult = channelsService.getMemberships(channelId.toLong(), userId)) {
             is Either.Left -> throw AssertionError("Getting memberships failed: ${membershipsResult.value}")
             is Either.Right -> {
-                assertIs<List<MembershipOutput>>(membershipsResult.value)
+                assertIs<List<MembershipOutputModel>>(membershipsResult.value)
                 assertEquals(1, membershipsResult.value.size)
                 assertEquals(MembershipRole.OWNER, membershipsResult.value[0].role)
             }

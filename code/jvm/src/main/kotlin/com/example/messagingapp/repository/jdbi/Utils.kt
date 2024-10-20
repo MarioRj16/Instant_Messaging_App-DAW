@@ -3,10 +3,10 @@ package com.example.messagingapp.repository.jdbi
 import com.example.messagingapp.domain.Password
 import com.example.messagingapp.domain.RegistrationInvitation
 import com.example.messagingapp.domain.Token
-import com.example.messagingapp.http.model.ChannelInvitationOutput
-import com.example.messagingapp.http.model.ChannelWithMembership
-import com.example.messagingapp.http.model.MembershipOutput
-import com.example.messagingapp.http.model.MessageOutput
+import com.example.messagingapp.http.model.output.ChannelInvitationOutputModel
+import com.example.messagingapp.http.model.output.ChannelWithMembershipOutputModel
+import com.example.messagingapp.http.model.output.MembershipOutputModel
+import com.example.messagingapp.http.model.output.MessageOutputModel
 import com.example.messagingapp.repository.jdbi.mappers.ChannelInvitationOutputMapper
 import com.example.messagingapp.repository.jdbi.mappers.ChannelWithMembershipMapper
 import com.example.messagingapp.repository.jdbi.mappers.InstantMapper
@@ -29,9 +29,9 @@ fun Jdbi.configureWithAppRequirements(): Jdbi {
     registerColumnMapper(Instant::class.java, InstantMapper())
 
     registerRowMapper(RegistrationInvitation::class.java, RegistrationInvitationMapper())
-    registerRowMapper(ChannelWithMembership::class.java, ChannelWithMembershipMapper())
-    registerRowMapper(ChannelInvitationOutput::class.java, ChannelInvitationOutputMapper())
-    registerRowMapper(MembershipOutput::class.java, MembershipOutputMapper())
-    registerRowMapper(MessageOutput::class.java, MessageOutputMapper())
+    registerRowMapper(ChannelWithMembershipOutputModel::class.java, ChannelWithMembershipMapper())
+    registerRowMapper(ChannelInvitationOutputModel::class.java, ChannelInvitationOutputMapper())
+    registerRowMapper(MembershipOutputModel::class.java, MembershipOutputMapper())
+    registerRowMapper(MessageOutputModel::class.java, MessageOutputMapper())
     return this
 }

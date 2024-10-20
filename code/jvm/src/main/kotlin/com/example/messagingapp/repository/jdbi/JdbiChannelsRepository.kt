@@ -1,9 +1,9 @@
 package com.example.messagingapp.repository.jdbi
 
-import com.example.messagingapp.http.model.ChannelInvitationOutput
-import com.example.messagingapp.http.model.ChannelWithMembership
-import com.example.messagingapp.http.model.MembershipOutput
-import com.example.messagingapp.http.model.MessageOutput
+import com.example.messagingapp.http.model.output.ChannelInvitationOutputModel
+import com.example.messagingapp.http.model.output.ChannelWithMembershipOutputModel
+import com.example.messagingapp.http.model.output.MembershipOutputModel
+import com.example.messagingapp.http.model.output.MessageOutputModel
 import com.example.messagingapp.repository.ChannelsRepository
 import kotlinx.datetime.Clock
 import org.jdbi.v3.core.Handle
@@ -41,7 +41,7 @@ class JdbiChannelsRepository(
     override fun getChannel(
         channelId: Long,
         userId: Int,
-    ): ChannelWithMembership? =
+    ): ChannelWithMembershipOutputModel? =
         handle
             .createQuery(
                 """
@@ -54,10 +54,10 @@ class JdbiChannelsRepository(
             )
             .bind("channelId", channelId)
             .bind("userId", userId)
-            .mapTo<ChannelWithMembership>()
+            .mapTo<ChannelWithMembershipOutputModel>()
             .singleOrNull()
 
-    override fun getJoinedChannels(userId: Int): List<ChannelWithMembership> =
+    override fun getJoinedChannels(userId: Int): List<ChannelWithMembershipOutputModel> =
         handle
             .createQuery(
                 """
@@ -69,10 +69,10 @@ class JdbiChannelsRepository(
         """,
             )
             .bind("userId", userId)
-            .mapTo<ChannelWithMembership>()
+            .mapTo<ChannelWithMembershipOutputModel>()
             .list()
 
-    override fun searchChannels(): List<ChannelWithMembership> =
+    override fun searchChannels(): List<ChannelWithMembershipOutputModel> =
         handle
             .createQuery(
                 """
@@ -83,7 +83,7 @@ class JdbiChannelsRepository(
                 WHERE c.is_public = TRUE
         """,
             )
-            .mapTo<ChannelWithMembership>()
+            .mapTo<ChannelWithMembershipOutputModel>()
             .list()
 
     override fun joinChannel(
@@ -91,7 +91,7 @@ class JdbiChannelsRepository(
         userId: Int,
     ): Unit = createMembership(userId, channelId.toInt(), "member")
 
-    override fun getMessages(channelId: Long): List<MessageOutput> =
+    override fun getMessages(channelId: Long): List<MessageOutputModel> =
         handle
             .createQuery(
                 """
@@ -102,7 +102,7 @@ class JdbiChannelsRepository(
         """,
             )
             .bind("channelId", channelId)
-            .mapTo<MessageOutput>()
+            .mapTo<MessageOutputModel>()
             .list()
 
     override fun sendMessage(
@@ -125,19 +125,19 @@ class JdbiChannelsRepository(
     override fun getMembership(
         channelId: Long,
         userId: Int,
-    ): MembershipOutput? =
+    ): MembershipOutputModel? =
         handle
             .createQuery("SELECT * FROM membership WHERE channel_id = :channelId AND member_id = :userId")
             .bind("channelId", channelId)
             .bind("userId", userId)
-            .mapTo<MembershipOutput>()
+            .mapTo<MembershipOutputModel>()
             .singleOrNull()
 
-    override fun getMemberships(channelId: Long): List<MembershipOutput> =
+    override fun getMemberships(channelId: Long): List<MembershipOutputModel> =
         handle
             .createQuery("SELECT * FROM membership WHERE channel_id = :channelId")
             .bind("channelId", channelId)
-            .mapTo<MembershipOutput>()
+            .mapTo<MembershipOutputModel>()
             .list()
 
     override fun inviteMember(
@@ -162,20 +162,20 @@ class JdbiChannelsRepository(
             .mapTo<Int>()
             .one()
 
-    override fun getInvitations(userId: Int): List<ChannelInvitationOutput> =
+    override fun getInvitations(userId: Int): List<ChannelInvitationOutputModel> =
         handle
             .createQuery(
                 "SELECT * FROM channel_invitation WHERE invitee_id = :userId",
             )
             .bind("userId", userId)
-            .mapTo<ChannelInvitationOutput>()
+            .mapTo<ChannelInvitationOutputModel>()
             .list()
 
     override fun getInvitation(
         inviterId: Int,
         inviteeId: Int,
         channelId: Int,
-    ): ChannelInvitationOutput =
+    ): ChannelInvitationOutputModel =
         handle
             .createQuery(
                 "SELECT * FROM channel_invitation WHERE inviter_id = :inviterId AND invitee_id = :inviteeId AND channel_id = :channelId",
@@ -183,15 +183,15 @@ class JdbiChannelsRepository(
             .bind("inviterId", inviterId)
             .bind("inviteeId", inviteeId)
             .bind("channelId", channelId)
-            .mapTo<ChannelInvitationOutput>()
+            .mapTo<ChannelInvitationOutputModel>()
             .one()
 
-    override fun getInvitationById(invitationId: Long): ChannelInvitationOutput =
+    override fun getInvitationById(invitationId: Long): ChannelInvitationOutputModel? =
         handle
             .createQuery("SELECT * FROM channel_invitation WHERE channel_invitation_id = :invitationId")
             .bind("invitationId", invitationId)
-            .mapTo<ChannelInvitationOutput>()
-            .one()
+            .mapTo<ChannelInvitationOutputModel>()
+            .singleOrNull()
 
     /*
     override fun getPendingInvitationById(invitationId: Long): ChannelInvitationOutput =

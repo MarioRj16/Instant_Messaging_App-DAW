@@ -1,10 +1,10 @@
 package com.example.messagingapp.services
 
 import com.example.messagingapp.domain.Token
-import com.example.messagingapp.http.model.ChannelInvitationOutput
-import com.example.messagingapp.http.model.ChannelWithMembership
-import com.example.messagingapp.http.model.MembershipOutput
-import com.example.messagingapp.http.model.MessageOutput
+import com.example.messagingapp.http.model.output.ChannelInvitationOutputModel
+import com.example.messagingapp.http.model.output.ChannelWithMembershipOutputModel
+import com.example.messagingapp.http.model.output.MembershipOutputModel
+import com.example.messagingapp.http.model.output.MessageOutputModel
 import com.example.messagingapp.utils.Either
 import kotlinx.datetime.Instant
 
@@ -63,19 +63,19 @@ sealed class ChannelGetError {
     data object UserDoesNotExist : ChannelGetError()
 }
 
-typealias ChannelGetResult = Either<ChannelGetError, ChannelWithMembership>
+typealias ChannelGetResult = Either<ChannelGetError, ChannelWithMembershipOutputModel>
 
 sealed class GetJoinedChannelsError {
     data object UserDoesNotExist : GetJoinedChannelsError()
 }
 
-typealias GetJoinedChannelsResult = Either<GetJoinedChannelsError, List<ChannelWithMembership>>
+typealias GetJoinedChannelsResult = Either<GetJoinedChannelsError, List<ChannelWithMembershipOutputModel>>
 
 sealed class SearchChannelsError {
     data object UserDoesNotExist : SearchChannelsError()
 }
 
-typealias SearchChannelsResult = Either<SearchChannelsError, List<ChannelWithMembership>>
+typealias SearchChannelsResult = Either<SearchChannelsError, List<ChannelWithMembershipOutputModel>>
 
 sealed class JoinChannelError {
     data object ChannelDoesNotExist : JoinChannelError()
@@ -97,7 +97,7 @@ sealed class GetMessagesError {
     data object UserIsNotMember : GetMessagesError()
 }
 
-typealias GetMessagesResult = Either<GetMessagesError, List<MessageOutput>>
+typealias GetMessagesResult = Either<GetMessagesError, List<MessageOutputModel>>
 
 sealed class SendMessageError {
     data object ChannelDoesNotExist : SendMessageError()
@@ -119,7 +119,7 @@ sealed class GetMembershipError {
     data object MembershipDoesNotExist : GetMembershipError()
 }
 
-typealias GetMembershipResult = Either<GetMembershipError, MembershipOutput>
+typealias GetMembershipResult = Either<GetMembershipError, MembershipOutputModel>
 
 sealed class GetMembershipsError {
     data object ChannelDoesNotExist : GetMembershipsError()
@@ -129,7 +129,7 @@ sealed class GetMembershipsError {
     data object UserIsNotMember : GetMembershipsError()
 }
 
-typealias GetMembershipsResult = Either<GetMembershipsError, List<MembershipOutput>>
+typealias GetMembershipsResult = Either<GetMembershipsError, List<MembershipOutputModel>>
 
 sealed class InviteMemberError {
     data object ChannelDoesNotExist : InviteMemberError()
@@ -153,7 +153,7 @@ sealed class GetInvitationsError {
     data object UserDoesNotExist : GetInvitationsError()
 }
 
-typealias GetInvitationsResult = Either<GetInvitationsError, List<ChannelInvitationOutput>>
+typealias GetInvitationsResult = Either<GetInvitationsError, List<ChannelInvitationOutputModel>>
 
 sealed class RespondInvitationError {
     data object UserDoesNotExist : RespondInvitationError()

@@ -40,7 +40,15 @@ import com.example.messagingapp.domain.AuthenticatedUser
 import com.example.messagingapp.domain.MembershipRole
 import com.example.messagingapp.domain.MessageInput
 import com.example.messagingapp.domain.User
-import com.example.messagingapp.http.model.*
+import com.example.messagingapp.http.model.input.ChannelInputModel
+import com.example.messagingapp.http.model.input.InvitationInputModel
+import com.example.messagingapp.http.model.input.InvitationResponseInputModel
+import com.example.messagingapp.http.model.output.ChannelCreateInputModel
+import com.example.messagingapp.http.model.output.ChannelInvitationOutputModel
+import com.example.messagingapp.http.model.output.ChannelListOutputModel
+import com.example.messagingapp.http.model.output.ChannelWithMembershipOutputModel
+import com.example.messagingapp.http.model.output.MembershipOutputModel
+import com.example.messagingapp.http.model.output.MessageOutputModel
 import com.example.messagingapp.services.*
 import com.example.messagingapp.utils.Failure
 import com.example.messagingapp.utils.Success
@@ -61,12 +69,12 @@ class ChannelController(
 ) {
     @PostMapping(Uris.Channels.CREATE)
     fun createChannel(
-        @RequestBody channel: ChannelInput,
+        @RequestBody channel: ChannelInputModel,
         user: AuthenticatedUser,
-    ): ResponseEntity<Int> =
+    ): ResponseEntity<ChannelCreateInputModel> =
 
         when (val res = channelService.createChannel(channel.channelName, user.user.userId, channel.isPublic)) {
-            is Success -> ResponseEntity(res.value, HttpStatus.CREATED)
+            is Success -> ResponseEntity(ChannelCreateInputModel(res.value), HttpStatus.CREATED)
             is Failure ->
                 when (res.value) {
                     ChannelCreationError.NameIsNotValid -> ResponseEntity(HttpStatus.BAD_REQUEST)
@@ -78,7 +86,7 @@ class ChannelController(
     fun getChannel(
         @PathVariable id: Long,
         user: AuthenticatedUser,
-    ): ResponseEntity<ChannelWithMembership> =
+    ): ResponseEntity<ChannelWithMembershipOutputModel> =
         when (val res = channelService.getChannel(id, user.user.userId)) {
             is Success -> ResponseEntity(res.value, HttpStatus.OK)
             is Failure ->
@@ -89,9 +97,9 @@ class ChannelController(
         }
 
     @GetMapping(Uris.Channels.GET_JOINED_CHANNELS)
-    fun getJoinedChannels(user: AuthenticatedUser): ResponseEntity<List<ChannelWithMembership>> =
+    fun getJoinedChannels(user: AuthenticatedUser): ResponseEntity<ChannelListOutputModel> =
         when (val res = channelService.getJoinedChannels(user.user.userId)) {
-            is Success -> ResponseEntity(res.value, HttpStatus.OK)
+            is Success -> ResponseEntity(ChannelListOutputModel(res.value), HttpStatus.OK)
             is Failure ->
                 when (res.value) {
                     GetJoinedChannelsError.UserDoesNotExist -> ResponseEntity(HttpStatus.UNAUTHORIZED)
@@ -99,7 +107,7 @@ class ChannelController(
         }
 
     @GetMapping(Uris.Channels.SEARCH_CHANNELS)
-    fun searchChannels(user: AuthenticatedUser): ResponseEntity<List<ChannelWithMembership>> =
+    fun searchChannels(user: AuthenticatedUser): ResponseEntity<List<ChannelWithMembershipOutputModel>> =
         when (val res = channelService.searchChannels(user.user.userId)) {
             is Success -> ResponseEntity(res.value, HttpStatus.OK)
             is Failure ->
@@ -128,7 +136,7 @@ class ChannelController(
     fun getMessages(
         @PathVariable id: Long,
         user: AuthenticatedUser,
-    ): ResponseEntity<List<MessageOutput>> =
+    ): ResponseEntity<List<MessageOutputModel>> =
         when (val res = channelService.getMessages(id, user.user.userId)) {
             is Success -> ResponseEntity(res.value, HttpStatus.OK)
             is Failure ->
@@ -163,7 +171,7 @@ class ChannelController(
     fun getMembership(
         @PathVariable id: Long,
         user: AuthenticatedUser,
-    ): ResponseEntity<MembershipOutput> =
+    ): ResponseEntity<MembershipOutputModel> =
         when (val res = channelService.getMembership(id, user.user.userId)) {
             is Success -> ResponseEntity(res.value, HttpStatus.OK)
             is Failure ->
@@ -193,7 +201,7 @@ class ChannelController(
     fun inviteMember(
         @PathVariable id: Long,
         user: AuthenticatedUser,
-        @RequestBody invitedUsername: InvitationInput,
+        @RequestBody invitedUsername: InvitationInputModel,
     ): ResponseEntity<Int> =
         when (
             val res =
@@ -218,7 +226,7 @@ class ChannelController(
         }
 
     @GetMapping(Uris.Channels.GET_INVITATIONS)
-    fun getInvitations(user: AuthenticatedUser): ResponseEntity<List<ChannelInvitationOutput>> =
+    fun getInvitations(user: AuthenticatedUser): ResponseEntity<List<ChannelInvitationOutputModel>> =
         when (val res = channelService.getInvitations(user.user.userId)) {
             is Success -> ResponseEntity(res.value, HttpStatus.OK)
             is Failure ->
@@ -230,7 +238,7 @@ class ChannelController(
     @PostMapping(Uris.Channels.RESPOND_INVITATION)
     fun respondToInvite(
         user: AuthenticatedUser,
-        @RequestBody response: RespondToInviteInput,
+        @RequestBody response: InvitationResponseInputModel,
     ): ResponseEntity<Int> =
         when (val res = channelService.respondInvitation(user.user.userId, response.inviteId, response.response)) {
             is Success -> ResponseEntity(res.value, HttpStatus.CREATED)

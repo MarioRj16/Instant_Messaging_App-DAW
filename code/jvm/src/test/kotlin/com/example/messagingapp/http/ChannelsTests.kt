@@ -7,8 +7,8 @@ import com.example.messagingapp.domain.UserDomain
 import com.example.messagingapp.domain.UserDomainConfig
 import com.example.messagingapp.generateRandomEmail
 import com.example.messagingapp.generateRandomString
-import com.example.messagingapp.http.model.ChannelInvitationOutput
-import com.example.messagingapp.http.model.ChannelWithMembership
+import com.example.messagingapp.http.model.output.ChannelInvitationOutputModel
+import com.example.messagingapp.http.model.output.ChannelWithMembershipOutputModel
 import com.example.messagingapp.repository.jdbi.JdbiTransactionManager
 import com.example.messagingapp.repository.jdbi.configureWithAppRequirements
 import kotlinx.datetime.Clock
@@ -30,7 +30,7 @@ class ChannelsTests {
 
     @Test
     fun `all channel things`() {
-        val client = WebTestClient.bindToServer().baseUrl("http://localhost:$port").build()
+        val client = WebTestClient.bindToServer().baseUrl("http://localhost:$port/api").build()
 
         val username = generateRandomString()
         val otherUsername = generateRandomString()
@@ -89,7 +89,7 @@ class ChannelsTests {
                 .header("Authorization", "Bearer $token")
                 .exchange()
                 .expectStatus().isOk
-                .expectBodyList(ChannelWithMembership::class.java)
+                .expectBody()
                 .returnResult()
                 .responseBody
 
@@ -98,7 +98,7 @@ class ChannelsTests {
             .header("Authorization", "Bearer $token")
             .exchange()
             .expectStatus().isOk
-            .expectBodyList(ChannelWithMembership::class.java)
+            .expectBodyList(ChannelWithMembershipOutputModel::class.java)
             .returnResult()
             .responseBody
 
@@ -146,7 +146,7 @@ class ChannelsTests {
                 .header("Authorization", "Bearer $otherUserToken")
                 .exchange()
                 .expectStatus().isOk
-                .expectBodyList(ChannelInvitationOutput::class.java)
+                .expectBodyList(ChannelInvitationOutputModel::class.java)
                 .returnResult()
                 .responseBody
 

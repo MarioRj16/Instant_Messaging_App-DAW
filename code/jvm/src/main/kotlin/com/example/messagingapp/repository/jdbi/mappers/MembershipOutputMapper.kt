@@ -1,17 +1,17 @@
 package com.example.messagingapp.repository.jdbi.mappers
 
 import com.example.messagingapp.domain.MembershipRole
-import com.example.messagingapp.http.model.MembershipOutput
+import com.example.messagingapp.http.model.output.MembershipOutputModel
 import org.jdbi.v3.core.mapper.RowMapper
 import org.jdbi.v3.core.statement.StatementContext
 import java.sql.ResultSet
 
-class MembershipOutputMapper : RowMapper<MembershipOutput> {
+class MembershipOutputMapper : RowMapper<MembershipOutputModel> {
     override fun map(
         rs: ResultSet,
         ctx: StatementContext,
-    ): MembershipOutput {
-        return MembershipOutput(
+    ): MembershipOutputModel {
+        return MembershipOutputModel(
             rs.getInt("membership_id"),
             rs.getInt("member_id"),
             rs.getInt("channel_id"),

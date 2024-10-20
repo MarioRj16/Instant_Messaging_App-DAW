@@ -24,9 +24,6 @@ dependencies {
 
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.14.2")
 
-    // serialization
-    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.5.1")
-
     // JDBI
     implementation("org.jdbi:jdbi3-core:3.37.1")
     implementation("org.jdbi:jdbi3-kotlin:3.37.1")

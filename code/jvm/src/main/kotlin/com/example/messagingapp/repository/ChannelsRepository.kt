@@ -1,9 +1,9 @@
 package com.example.messagingapp.repository
 
-import com.example.messagingapp.http.model.ChannelInvitationOutput
-import com.example.messagingapp.http.model.ChannelWithMembership
-import com.example.messagingapp.http.model.MembershipOutput
-import com.example.messagingapp.http.model.MessageOutput
+import com.example.messagingapp.http.model.output.ChannelInvitationOutputModel
+import com.example.messagingapp.http.model.output.ChannelWithMembershipOutputModel
+import com.example.messagingapp.http.model.output.MembershipOutputModel
+import com.example.messagingapp.http.model.output.MessageOutputModel
 
 interface ChannelsRepository {
     fun createChannel(
@@ -15,18 +15,18 @@ interface ChannelsRepository {
     fun getChannel(
         channelId: Long,
         userId: Int,
-    ): ChannelWithMembership?
+    ): ChannelWithMembershipOutputModel?
 
-    fun getJoinedChannels(userId: Int): List<ChannelWithMembership>
+    fun getJoinedChannels(userId: Int): List<ChannelWithMembershipOutputModel>
 
-    fun searchChannels(): List<ChannelWithMembership>
+    fun searchChannels(): List<ChannelWithMembershipOutputModel>
 
     fun joinChannel(
         channelId: Long,
         userId: Int,
     ): Unit
 
-    fun getMessages(channelId: Long): List<MessageOutput>
+    fun getMessages(channelId: Long): List<MessageOutputModel>
 
     fun sendMessage(
         channelId: Long,
@@ -37,9 +37,9 @@ interface ChannelsRepository {
     fun getMembership(
         channelId: Long,
         userId: Int,
-    ): MembershipOutput?
+    ): MembershipOutputModel?
 
-    fun getMemberships(channelId: Long): List<MembershipOutput>
+    fun getMemberships(channelId: Long): List<MembershipOutputModel>
 
     fun inviteMember(
         channelId: Long,
@@ -49,15 +49,15 @@ interface ChannelsRepository {
         expiresAt: Long,
     ): Int
 
-    fun getInvitations(userId: Int): List<ChannelInvitationOutput>
+    fun getInvitations(userId: Int): List<ChannelInvitationOutputModel>
 
     fun getInvitation(
         inviterId: Int,
         inviteeId: Int,
         channelId: Int,
-    ): ChannelInvitationOutput?
+    ): ChannelInvitationOutputModel?
 
-    fun getInvitationById(invitationId: Long): ChannelInvitationOutput?
+    fun getInvitationById(invitationId: Long): ChannelInvitationOutputModel?
 
     // fun getPendingInvitationById(invitationId: Long): ChannelInvitationOutput?
 
