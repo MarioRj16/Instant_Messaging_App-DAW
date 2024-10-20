@@ -7,8 +7,9 @@ import com.example.messagingapp.domain.UserDomain
 import com.example.messagingapp.domain.UserDomainConfig
 import com.example.messagingapp.generateRandomEmail
 import com.example.messagingapp.generateRandomString
-import com.example.messagingapp.http.model.output.ChannelInvitationOutputModel
-import com.example.messagingapp.http.model.output.ChannelWithMembershipOutputModel
+import com.example.messagingapp.http.model.output.ChannelListOutputModel
+import com.example.messagingapp.http.model.output.GetInvitationsOutputModel
+import com.example.messagingapp.http.model.output.GetMessagesOutputModel
 import com.example.messagingapp.repository.jdbi.JdbiTransactionManager
 import com.example.messagingapp.repository.jdbi.configureWithAppRequirements
 import kotlinx.datetime.Clock
@@ -98,7 +99,7 @@ class ChannelsTests {
             .header("Authorization", "Bearer $token")
             .exchange()
             .expectStatus().isOk
-            .expectBodyList(ChannelWithMembershipOutputModel::class.java)
+            .expectBody(ChannelListOutputModel::class.java)
             .returnResult()
             .responseBody
 
@@ -133,11 +134,8 @@ class ChannelsTests {
                 .header("Authorization", "Bearer $token")
                 .exchange()
                 .expectStatus().isOk
-        // .expectBodyList(MessageOutput::class.java)
+                .expectBody(GetMessagesOutputModel::class.java)
 
-        println("message -> \n --------------------------------------------")
-
-        println(message)
         // MUST FIND THIS 1 MESSAGE
 
         // GET INVITATIONS
@@ -146,11 +144,11 @@ class ChannelsTests {
                 .header("Authorization", "Bearer $otherUserToken")
                 .exchange()
                 .expectStatus().isOk
-                .expectBodyList(ChannelInvitationOutputModel::class.java)
+                .expectBody(GetInvitationsOutputModel::class.java)
                 .returnResult()
                 .responseBody
 
-        val inviteId = invitation?.get(0)?.channelInvitationId
+        val inviteId = invitation!!.invitations[0].channelInvitationId
 
         client.post().uri("/channel/invitations")
             .header("Authorization", "Bearer $otherUserToken")

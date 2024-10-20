@@ -7,5 +7,5 @@ data class MembershipOutputModel(
     val userId: Int,
     val channelId: Int,
     val role: MembershipRole,
-    val joinedAt: Long,
+    val joinedAt: String,
 )
