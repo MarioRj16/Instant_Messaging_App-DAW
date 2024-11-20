@@ -5,6 +5,7 @@ const RegisterPage: React.FC = () => {
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
+    const [token,setToken] = useState('');
     const [error, setError] = useState('');
 
     const handleSubmit = (e: React.FormEvent) => {
@@ -60,6 +61,15 @@ const RegisterPage: React.FC = () => {
                     required
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
+                />
+                <TextField
+                    label="Registration Token"
+                    name="token"
+                    variant="outlined"
+                    fullWidth
+                    required
+                    value={token}
+                    onChange={(e) => setToken(e.target.value)}
                 />
                 {error && <Alert severity="error">{error}</Alert>}
                 <Button type="submit" variant="contained" color="primary" fullWidth>

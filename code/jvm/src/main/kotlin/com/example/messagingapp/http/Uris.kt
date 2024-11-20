@@ -17,14 +17,12 @@ object Uris {
         const val SEARCH_CHANNELS = "$PREFIX/channel/search"
         const val JOIN_CHANNEL = "$PREFIX/channel/{id}/join"
         const val GET_BY_ID = "$PREFIX/channel/{id}/settings"
-        const val GET_MESSAGES = "$PREFIX/channel/{id}"
+        const val LIST_MESSAGES = "$PREFIX/channel/{id}"
         const val SEND_MESSAGE = "$PREFIX/channel/{id}"
-        const val GET_INVITATIONS = "$PREFIX/channel/invitations"
-        const val RESPOND_INVITATION = "$PREFIX/channel/invitations"
-        const val MEMBERSHIPS = "$PREFIX/channel/{id}/memberships"
-        const val MEMBERSHIP = "$PREFIX/channel/{id}/memberships/{memberId}"
+        const val LIST_INVITATIONS = "$PREFIX/channel/invitations"
+        const val ACCEPT_INVITATION = "$PREFIX/channel/invitations/{id}/accept"
+        const val DECLINE_INVITATION = "$PREFIX/channel/invitations/{id}/decline"
         const val INVITE_MEMBER = "$PREFIX/channel/{id}/memberships"
-        const val KICK_MEMBERS = "$PREFIX/channel/{id}/memberships"
         const val LEAVE_CHANNEL = "$PREFIX/channel/{id}/memberships"
     }
 }

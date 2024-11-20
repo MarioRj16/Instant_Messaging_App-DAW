@@ -25,7 +25,7 @@ let channels = [
     },
     // More channels as needed
 ];
-createMockChannels(channels,4,30);
+createMockChannels(channels,4,20);
 
 function createMockChannels(channels: ({ name: string; lastMessage: string; timeSent: string; id: string }[]), start: number, number: number){
 

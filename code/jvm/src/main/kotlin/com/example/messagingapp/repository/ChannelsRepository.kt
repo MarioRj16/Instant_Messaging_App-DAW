@@ -1,79 +1,71 @@
 package com.example.messagingapp.repository
 
-import com.example.messagingapp.http.model.output.ChannelInvitationOutputModel
-import com.example.messagingapp.http.model.output.ChannelWithMembershipOutputModel
-import com.example.messagingapp.http.model.output.MembershipOutputModel
-import com.example.messagingapp.http.model.output.MessageOutputModel
+import com.example.messagingapp.domain.Channel
+import com.example.messagingapp.domain.ChannelInvitation
+import com.example.messagingapp.domain.Membership
+import com.example.messagingapp.domain.Message
+import kotlinx.datetime.Clock
 
 interface ChannelsRepository {
     fun createChannel(
         channelName: String,
         isPublic: Boolean,
         ownerId: Int,
+        clock: Clock,
     ): Int
 
     fun getChannel(
-        channelId: Long,
+        channelId: Int,
         userId: Int,
-    ): ChannelWithMembershipOutputModel?
+    ): Channel?
 
-    fun getJoinedChannels(userId: Int): List<ChannelWithMembershipOutputModel>
+    fun getJoinedChannels(userId: Int): List<Channel>
 
-    fun searchChannels(): List<ChannelWithMembershipOutputModel>
+    fun searchChannels(userId: Int, name: String = ""): List<Channel>
 
-    fun joinChannel(
-        channelId: Long,
-        userId: Int,
-    ): Unit
+    fun deleteChannel(channelId: Int)
 
-    fun getMessages(channelId: Long): List<MessageOutputModel>
+    fun getMessages(channelId: Int): List<Message>
 
-    fun sendMessage(
-        channelId: Long,
+    fun createMessage(
+        channelId: Int,
         userId: Int,
         content: String,
+        clock: Clock,
     ): Int
 
     fun getMembership(
-        channelId: Long,
+        channelId: Int,
         userId: Int,
-    ): MembershipOutputModel?
+    ): Membership?
 
-    fun getMemberships(channelId: Long): List<MembershipOutputModel>
+    fun listMemberships(channelId: Int): List<Membership>
 
-    fun inviteMember(
-        channelId: Long,
-        userId: Int,
-        invitedUserId: Int,
-        role: String,
-        expiresAt: Long,
-    ): Int
-
-    fun getInvitations(userId: Int): List<ChannelInvitationOutputModel>
-
-    fun getInvitation(
+    fun createChannelInvitation(
+        channelId: Int,
         inviterId: Int,
         inviteeId: Int,
-        channelId: Int,
-    ): ChannelInvitationOutputModel?
-
-    fun getInvitationById(invitationId: Long): ChannelInvitationOutputModel?
-
-    // fun getPendingInvitationById(invitationId: Long): ChannelInvitationOutput?
-
-    fun acceptInvitation(
-        invitationId: Long,
-        userId: Int,
-        channelId: Int,
         role: String,
+        clock: Clock,
     ): Int
 
-    fun declineInvitation(invitationId: Long): Int
+    fun listInvitations(userId: Int): List<ChannelInvitation>
 
-    fun leaveChannel(
-        channelId: Long,
+    fun getInvitation(invitationId: Int): ChannelInvitation?
+
+    fun getInvitation(channelId: Int, userId: Int): ChannelInvitation?
+
+    fun deleteInvitation(invitationId: Int)
+
+    fun deleteMembership(
+        channelId: Int,
         userId: Int,
     )
 
-    // fun kickMembers(channelId: Long,usersId:List<Int>): Boolean?
+    fun createMembership(
+        userId: Int,
+        channelId: Int,
+        clock: Clock,
+        role: String,
+    )
 }

@@ -26,7 +26,7 @@ const Navbar: React.FC<NavbarProps> = ({ title, onBackClick, onLogoutClick, icon
     };
 
     return (
-        <AppBar position="static">
+        <AppBar position="sticky">
             <Toolbar>
                 <IconButton edge="start" color="inherit" onClick={handleBack} aria-label="back">
                     <ArrowBackIcon />

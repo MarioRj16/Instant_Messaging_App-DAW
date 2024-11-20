@@ -29,7 +29,7 @@ const SearchChannelsPage: React.FC = () => {
             <Navbar title="Search Channels" onLogoutClick={handleLogout} />
 
             <Box display="flex" flexDirection="column" alignItems="center" flexGrow={1} p={2}>
-                <List sx={{ width: '80%', maxWidth: 600 }}>
+                <List sx={{ width: '80%'}}>
                     {publicChannels.map((channel) => (
                         <ListItem
                             key={channel.id}

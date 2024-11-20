@@ -1,116 +1,93 @@
 package com.example.messagingapp.repository.jdbi
 
-import com.example.messagingapp.Environment
+import com.example.messagingapp.TestClock
+import com.example.messagingapp.clearDatabase
 import com.example.messagingapp.domain.AuthToken
-import com.example.messagingapp.domain.InviteStatus
 import com.example.messagingapp.domain.Password
 import com.example.messagingapp.domain.Token
-import com.example.messagingapp.domain.UserDomainConfig
-import com.example.messagingapp.generateRandomEmail
+import com.example.messagingapp.generateInvitationCode
 import com.example.messagingapp.generateRandomString
-import kotlinx.datetime.Clock
-import org.jdbi.v3.core.Handle
-import org.jdbi.v3.core.Jdbi
+import com.example.messagingapp.jdbi
+import com.example.messagingapp.runWithHandle
+import com.example.messagingapp.userDomain
+import com.example.messagingapp.userDomainConfig
+import java.util.UUID
+import org.junit.jupiter.api.AfterEach
+import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Test
-import org.postgresql.ds.PGSimpleDataSource
-import java.util.UUID
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
-import kotlin.time.Duration.Companion.hours
+import kotlin.test.assertTrue
 
 class JdbiUserRepositoryTests {
+    @AfterEach
+    fun tearDown(): Unit {
+        clearDatabase(jdbi)
+    }
+
     @Test
     fun `User can be created and retrieved by id`() {
         runWithHandle { handle ->
-            // given: a UsersRepository
             val repo = JdbiUsersRepository(handle)
+            val clock = TestClock()
 
-            // when: creating a user
-            val userName = generateRandomString()
-            val email = generateRandomEmail()
+            val userName = "user1"
             val password = Password("Hash12345@")
-            val userId = repo.createUser(userName, email, password)
+            val invitationCode = generateInvitationCode(clock)
+            val userId = repo.createUser(userName, password, invitationCode)
 
-            // and: retrieving a user
-            val account = repo.getUserById(userId)
+            val user = repo.getUser(userId)
 
-            // then: the user is stored
-            assertNotNull(account)
-            assertEquals(userName, account.username)
-            assertEquals(email, account.email)
-            assertEquals(password, account.password)
+            assertNotNull(user)
+            assertEquals(userId, user.userId)
+            assertEquals(userName, user.username)
+            assertEquals(password, user.password)
         }
     }
 
     @Test
-    fun `User can be retrieved by id`() {
+    fun `User can be retrieved by ID`() {
         runWithHandle { handle ->
-            // given: a UsersRepository
             val repo = JdbiUsersRepository(handle)
+            val clock = TestClock()
 
-            // when: creating a user
-            val userName = generateRandomString()
-            val email = generateRandomEmail()
+            val userName = "user1"
             val password = Password("Hash12345@")
-            repo.createUser(userName, email, password)
+            val invitationCode = generateInvitationCode(clock)
+            val userId = repo.createUser(userName, password, invitationCode)
 
-            // and: retrieving a user
-            val account = repo.getUserByUsername(userName)
+            val account = repo.getUser(userId)
 
-            // then: the user is stored
             assertNotNull(account)
+            assertEquals(userId, account.userId)
             assertEquals(userName, account.username)
-            assertEquals(email, account.email)
             assertEquals(password, account.password)
         }
     }
 
-    @Test
-    fun `User can be retrieved by email`() {
-        runWithHandle { handle ->
-            // given: a UsersRepository
-            val repo = JdbiUsersRepository(handle)
 
-            // when: creating a user
-            val userName = generateRandomString()
-            val email = generateRandomEmail()
-            val password = Password("Hash12345@")
-            repo.createUser(userName, email, password)
-
-            // and: retrieving a user
-            val account = repo.getUserByEmail(email)
-
-            // then: the user is stored
-            assertNotNull(account)
-            assertEquals(userName, account.username)
-            assertEquals(email, account.email)
-            assertEquals(password, account.password)
-        }
-    }
 
     @Test
     fun `AuthToken can be retrieved by token`() {
         runWithHandle { handle ->
-            // given: a UsersRepository
             val repo = JdbiUsersRepository(handle)
+            val clock = TestClock()
 
-            // when: creating a user and a token
-            val userName = generateRandomString()
-            val email = generateRandomEmail()
+            val userName = "user1"
             val password = Password("Hash12345@")
-            val userId = repo.createUser(userName, email, password)
-            val currentInstant = Clock.System.now()
+            val invitationCode = generateInvitationCode(clock)
+            val userId = repo.createUser(userName, password, invitationCode)
+            val currentInstant = TestClock().now()
+
             val token = AuthToken(Token(UUID.randomUUID()), userId, currentInstant, currentInstant)
-            repo.createToken(token, usersDomainDefaultConfig.maxTokensPerUser)
+            repo.createToken(token, userDomainConfig.maxTokensPerUser)
 
-            // and: retrieving a user
-            val account = repo.getUserByToken(token.token)
+            val authToken = repo.getAuthToken(token.token)
 
-            // then: the user is stored
-            assertNotNull(account)
-            assertEquals(userId, account.userId)
-            assertEquals(token.token, account.token)
+            assertNotNull(authToken)
+            assertEquals(userId, authToken.userId)
+            assertEquals(token.token, authToken.token)
             /* We don't check the token creation time because we can't guarantee that the token creation time is the
              * same as the token retrieval time due to the time it takes to create the token in the database.
              */
@@ -120,22 +97,18 @@ class JdbiUserRepositoryTests {
     @Test
     fun `User can be retrieved by username`() {
         runWithHandle { handle ->
-            // given: a UsersRepository
             val repo = JdbiUsersRepository(handle)
+            val clock = TestClock()
 
-            // when: creating a user
-            val userName = generateRandomString()
-            val email = generateRandomEmail()
+            val userName = "user1"
             val password = Password("Hash12345@")
-            repo.createUser(userName, email, password)
+            val invitationCode = generateInvitationCode(clock)
+            repo.createUser(userName, password, invitationCode)
 
-            // and: retrieving a user
-            val account = repo.getUserByUsername(userName)
+            val account = repo.getUser(userName)
 
-            // then: the user is stored
             assertNotNull(account)
             assertEquals(userName, account.username)
-            assertEquals(email, account.email)
             assertEquals(password, account.password)
         }
     }
@@ -143,97 +116,60 @@ class JdbiUserRepositoryTests {
     @Test
     fun `Registration invitation can be created and retrieved`() {
         runWithHandle {
-            // given: a UsersRepository and a user
             val repo = JdbiUsersRepository(it)
-            val userName = generateRandomString()
-            val email = generateRandomEmail()
-            val password = Password("Hash12345@")
-            val inviterId = repo.createUser(userName, email, password)
+            val clock = TestClock()
 
-            // when: storing a registration invitation
-            val invitationToken = repo.createRegistrationInvitation(inviterId, Clock.System.now())
+            val invitationCode = userDomain.createInvitationCode()
+            repo.createRegistrationInvitation(clock, invitationCode)
 
-            // and: retrieving the registration invitation
-            val invitation = repo.getRegistrationInvitation(invitationToken)
+            val invitation = repo.getRegistrationInvitation(invitationCode)
 
-            // then: the registration invitation is stored
             assertNotNull(invitation)
-            assertEquals(inviterId, invitation.inviterId)
-            assertEquals(invitation.invitationStatus, InviteStatus.PENDING)
+            assertEquals(invitation.invitationCode, invitationCode)
         }
     }
 
     @Test
-    fun `Registration invitation can be accepted`() {
+    fun `Registration invitation can be checked for use`() {
         runWithHandle {
-            // given: a UsersRepository and a user
             val repo = JdbiUsersRepository(it)
-            val userName = generateRandomString()
-            val email = generateRandomEmail()
-            val password = Password("Hash12345@")
-            val inviterId = repo.createUser(userName, email, password)
+            val clock = TestClock()
 
-            // when: storing a registration invitation
-            val invitationToken = repo.createRegistrationInvitation(inviterId, Clock.System.now())
+            val invitationCode = userDomain.createInvitationCode()
+            repo.createRegistrationInvitation(clock, invitationCode)
 
-            // and: retrieving, accepting and retrieving the registration invitation
-            repo.getRegistrationInvitation(invitationToken)
-            repo.acceptRegistrationInvitation(invitationToken)
-            val invitationAccepted = repo.getRegistrationInvitation(invitationToken)
+            var isUsed = repo.registrationInvitationIsUsed(invitationCode)
+            assertFalse(isUsed)
 
-            // then: the registration invitation is stored
-            assertNotNull(invitationAccepted)
-            assertEquals(inviterId, invitationAccepted.inviterId)
-            assertEquals(invitationAccepted.invitationStatus, InviteStatus.ACCEPTED)
-        }
-    }
+            val username = "username"
+            val password = "password"
+            repo.createUser(username, Password(password), invitationCode)
 
-    @Test
-    fun `Registration invitation can be declined`() {
-        runWithHandle {
-            // given: a UsersRepository and a user
-            val repo = JdbiUsersRepository(it)
-            val userName = generateRandomString()
-            val email = generateRandomEmail()
-            val password = Password("Hash12345@")
-            val inviterId = repo.createUser(userName, email, password)
-
-            // when: storing a registration invitation
-            val invitationToken = repo.createRegistrationInvitation(inviterId, Clock.System.now())
-
-            // and: retrieving, declining and retrieving the registration invitation
-            repo.getRegistrationInvitation(invitationToken)
-            repo.declineRegistrationInvitation(invitationToken)
-            val invitationDeclined = repo.getRegistrationInvitation(invitationToken)
-
-            // then: the registration invitation is stored
-            assertNotNull(invitationDeclined)
-            assertEquals(inviterId, invitationDeclined.inviterId)
-            assertEquals(invitationDeclined.invitationStatus, InviteStatus.REJECTED)
+            isUsed = repo.registrationInvitationIsUsed(invitationCode)
+            assertTrue(isUsed)
         }
     }
 
     @Test
     fun `Token can be created and retrieved`() {
         runWithHandle {
-            // given: a UsersRepository and a user
             val repo = JdbiUsersRepository(it)
-            val userName = generateRandomString()
-            val email = generateRandomEmail()
-            val password = Password("Hash12345@")
-            val userId = repo.createUser(userName, email, password)
-            val currentInstant = Clock.System.now()
+            val clock = TestClock()
 
-            // when: creating a token
+            val userName = "user1"
+            val password = Password("Hash12345@")
+            val invitationCode = generateInvitationCode(clock)
+
+            val userId = repo.createUser(userName, password, invitationCode)
+            val currentInstant = clock.now()
+
             repo.createToken(
                 AuthToken(Token(UUID.randomUUID()), userId, currentInstant, currentInstant),
-                usersDomainDefaultConfig.maxTokensPerUser,
+                userDomainConfig.maxTokensPerUser,
             )
 
-            // and: retrieving the token
-            val authToken = repo.getToken(userId)
+            val authToken = repo.getAuthToken(userId)
 
-            // then: the token is stored
             assertNotNull(authToken)
         }
     }
@@ -241,44 +177,22 @@ class JdbiUserRepositoryTests {
     @Test
     fun `Token can be deleted`() {
         runWithHandle {
-            // given: a UsersRepository and a user
             val repo = JdbiUsersRepository(it)
-            val userName = generateRandomString()
-            val email = generateRandomEmail()
-            val password = Password("Hash12345@")
-            val userId = repo.createUser(userName, email, password)
-            val currentInstant = Clock.System.now()
-            val token = AuthToken(Token(UUID.randomUUID()), userId, currentInstant, currentInstant)
-            repo.createToken(token, usersDomainDefaultConfig.maxTokensPerUser)
+            val clock = TestClock()
 
-            // when: deleting the token
+            val userName = generateRandomString()
+            val password = Password("Hash12345@")
+            val invitationCode = generateInvitationCode(clock)
+            val userId = repo.createUser(userName, password, invitationCode)
+            val currentInstant = clock.now()
+            val token = AuthToken(Token(UUID.randomUUID()), userId, currentInstant, currentInstant)
+            repo.createToken(token, userDomainConfig.maxTokensPerUser)
+
             repo.deleteToken(token.token)
 
-            // and: retrieving the token
-            val authToken = repo.getToken(userId)
+            val authToken = repo.getAuthToken(userId)
 
-            // then: the token is deleted
             assertNull(authToken)
         }
-    }
-
-    companion object {
-        private fun runWithHandle(block: (Handle) -> Unit) = jdbi.useTransaction<Exception>(block)
-
-        private val usersDomainDefaultConfig =
-            UserDomainConfig(
-                tokenTTL = 24.hours,
-                tokenRollingTTL = 1.hours,
-                maxTokensPerUser = 3,
-                registrationInvitationTTL = 24.hours,
-            )
-
-        private val jdbi =
-            Jdbi
-                .create(
-                    PGSimpleDataSource().apply {
-                        setURL(Environment.getDbUrl())
-                    },
-                ).configureWithAppRequirements()
     }
 }

@@ -5,7 +5,7 @@ ALTER TABLE message DISABLE TRIGGER ALL;
 ALTER TABLE channel DISABLE TRIGGER ALL;
 ALTER TABLE registration_invitation DISABLE TRIGGER ALL;
 ALTER TABLE auth_token DISABLE TRIGGER ALL;
-ALTER TABLE account DISABLE TRIGGER ALL;
+ALTER TABLE users DISABLE TRIGGER ALL;
 
 
 TRUNCATE TABLE
@@ -15,7 +15,7 @@ TRUNCATE TABLE
     channel,
     registration_invitation,
     auth_token,
-    account
+    users
     RESTART IDENTITY CASCADE;
 
 -- Re-enable foreign key checks
@@ -25,4 +25,4 @@ ALTER TABLE message ENABLE TRIGGER ALL;
 ALTER TABLE channel ENABLE TRIGGER ALL;
 ALTER TABLE registration_invitation ENABLE TRIGGER ALL;
 ALTER TABLE auth_token ENABLE TRIGGER ALL;
-ALTER TABLE account ENABLE TRIGGER ALL;
+ALTER TABLE users ENABLE TRIGGER ALL;

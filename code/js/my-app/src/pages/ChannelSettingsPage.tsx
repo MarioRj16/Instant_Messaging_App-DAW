@@ -36,13 +36,19 @@ const ChannelSettingsPage: React.FC = () => {
         handleCloseInviteDialog();
     };
 
+    // Leave Channel functionality
+    const handleLeaveChannel = () => {
+        console.log("Leaving the channel...");
+        // TODO: Implement leave channel functionality, such as API call
+    };
+
     return (
         <Box display="flex" flexDirection="column" minHeight="100vh">
             <Navbar title="Channel Settings" onLogoutClick={() => {}} />
 
             <Box display="flex" flexDirection="column" alignItems="center" p={3} flexGrow={1}>
                 {/* Participants List */}
-                <List sx={{ width: '100%', maxWidth: 500, bgcolor: 'background.paper' }}>
+                <List sx={{ width: '80%', bgcolor: 'background.paper' }}>
                     {participants.map((participant) => (
                         <ListItem key={participant.id} divider>
                             <ListItemText
@@ -53,6 +59,7 @@ const ChannelSettingsPage: React.FC = () => {
                     ))}
                 </List>
 
+                {/* Invite Button */}
                 {currentUserRole === 'owner' && (
                     <Button
                         variant="contained"
@@ -63,6 +70,16 @@ const ChannelSettingsPage: React.FC = () => {
                         Invite Participant
                     </Button>
                 )}
+
+                {/* Leave Channel Button */}
+                <Button
+                    variant="contained"
+                    color="error"
+                    onClick={handleLeaveChannel}
+                    sx={{ mt: 2 }}
+                >
+                    Leave Channel
+                </Button>
 
                 {/* Invite Dialog */}
                 <Dialog open={inviteDialogOpen} onClose={handleCloseInviteDialog}>

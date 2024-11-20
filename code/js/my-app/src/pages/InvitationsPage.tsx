@@ -40,7 +40,7 @@ const InvitationsPage: React.FC = () => {
                 flexGrow={1}
                 p={2}
             >
-                <List sx={{ width: '100%', maxWidth: 600 }}>
+                <List sx={{ width: '80%'}}>
                     {invitations.map((invite) => {
                         const isExpired = dayjs().isAfter(dayjs(invite.expirationDate));
 

@@ -1,5 +1,5 @@
 package com.example.messagingapp.http.model.output
 
-data class ChannelCreateInputModel(
+data class ChannelCreateOutputModel(
     val channelId: Int,
 )

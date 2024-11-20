@@ -46,6 +46,7 @@ class MessagingAppApplication {
             tokenRollingTTL = 1.hours,
             maxTokensPerUser = 3,
             registrationInvitationTTL = 24.hours,
+            invitationCodeLength = 4,
         )
 }
 

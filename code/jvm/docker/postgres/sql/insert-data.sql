@@ -1,8 +1,10 @@
-INSERT INTO users (username, email, password)
-VALUES
-    ('rxfa123', 'rafa3rnrn@gmail.com', '$2a$12$8Edde3c7GlrCTxHFVlXasOWDmtY1RQ.3Vwh7BEu9RWc7fWNSodPJ.'),
-    ('admin123', 'mariorijocarvalho@gmail.com', '$2a$12$qWmekXEazYubKbsAzCTRPO9RwixCo1RlwyCpjD/MMN7rnir9l25wq');
 
-INSERT INTO registration_invitation (invitation_token, inviter_id, created_at, status)
+INSERT INTO registration_invitation (invitation_code, created_at)
 VALUES
-    ('f7b3b3b4-1b3b-4b3b-8b3b-3b3b3b3b3b3b', 1, '1729382400', 'pending');
+    ('1ABCD', 1729382400),
+    ('EF21K', 1729382410);
+
+INSERT INTO users (invitation_code, username, password)
+VALUES
+    ('1ABCD', 'rxfa123', '$2a$12$8Edde3c7GlrCTxHFVlXasOWDmtY1RQ.3Vwh7BEu9RWc7fWNSodPJ.'),
+    ('EF21K', 'admin123', '$2a$12$qWmekXEazYubKbsAzCTRPO9RwixCo1RlwyCpjD/MMN7rnir9l25wq');

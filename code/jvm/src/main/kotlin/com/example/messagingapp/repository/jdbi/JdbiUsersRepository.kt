@@ -7,7 +7,6 @@ import com.example.messagingapp.domain.Token
 import com.example.messagingapp.domain.User
 import com.example.messagingapp.repository.UsersRepository
 import kotlinx.datetime.Clock
-import kotlinx.datetime.Instant
 import org.jdbi.v3.core.Handle
 import org.jdbi.v3.core.kotlin.mapTo
 import org.slf4j.LoggerFactory
@@ -16,28 +15,21 @@ import java.util.UUID
 class JdbiUsersRepository(
     private val handle: Handle,
 ) : UsersRepository {
-    override fun getUserById(userId: Int): User? =
+    override fun getUser(userId: Int): User? =
         handle
             .createQuery("SELECT * FROM users WHERE user_id = :id")
             .bind("id", userId)
             .mapTo<User>()
             .singleOrNull()
 
-    override fun getUserByUsername(username: String): User? =
+    override fun getUser(username: String): User? =
         handle
             .createQuery("SELECT * FROM users WHERE username = :username")
             .bind("username", username)
             .mapTo<User>()
             .singleOrNull()
 
-    override fun getUserByEmail(email: String): User? =
-        handle
-            .createQuery("SELECT * FROM users WHERE email = :email")
-            .bind("email", email)
-            .mapTo<User>()
-            .singleOrNull()
-
-    override fun getUserByToken(token: Token): AuthToken? =
+    override fun getAuthToken(token: Token): AuthToken? =
         handle
             .createQuery("""SELECT * FROM auth_token WHERE token = :token""")
             .bind("token", token.value)
@@ -46,23 +38,24 @@ class JdbiUsersRepository(
 
     override fun createUser(
         username: String,
-        email: String,
         password: Password,
+        invitationCode: String,
     ): Int =
         handle
             .createUpdate(
                 """
-                INSERT INTO users (username, email, password)
-                VALUES (:username, :email, :password)
+                INSERT INTO users (username, password, invitation_code)
+                VALUES (:username, :password, :invitation_code)
                 """,
-            ).bind("username", username)
-            .bind("email", email)
+            )
+            .bind("username", username)
             .bind("password", password.value)
+            .bind("invitation_code", invitationCode)
             .executeAndReturnGeneratedKeys("user_id")
             .mapTo<Int>()
             .one()
 
-    override fun getToken(userId: Int): AuthToken? =
+    override fun getAuthToken(userId: Int): AuthToken? =
         handle
             .createQuery("SELECT * FROM auth_token WHERE user_id = :userId")
             .bind("userId", userId)
@@ -119,53 +112,33 @@ class JdbiUsersRepository(
             .let { it > 0 }
 
     override fun createRegistrationInvitation(
-        inviterId: Int,
-        createdAt: Instant,
-    ): Token {
-        val token = UUID.randomUUID()
+        clock: Clock,
+        invitationCode: String,
+    ) {
         handle
             .createUpdate(
                 """
-                INSERT INTO registration_invitation (invitation_token, inviter_id, created_at, status)
-                VALUES (:token, :inviterId, :createdAt, 'pending')
+                INSERT INTO registration_invitation (invitation_code, created_at)
+                VALUES (:code, :createdAt)
                 """,
-            ).bind("token", token)
-            .bind("inviterId", inviterId)
-            .bind("createdAt", createdAt.epochSeconds)
+            ).bind("code", invitationCode)
+            .bind("createdAt", clock.now().epochSeconds)
             .execute()
-        return Token(token)
     }
 
-    override fun getRegistrationInvitation(token: Token): RegistrationInvitation? =
+    override fun getRegistrationInvitation(invitationCode: String): RegistrationInvitation? =
         handle
-            .createQuery("""SELECT * FROM registration_invitation WHERE invitation_token = :token""")
-            .bind("token", token.value)
+            .createQuery("""SELECT * FROM registration_invitation WHERE invitation_code = :code""")
+            .bind("code", invitationCode)
             .mapTo<RegistrationInvitation>()
             .singleOrNull()
 
-    override fun acceptRegistrationInvitation(token: Token) {
+    override fun registrationInvitationIsUsed(invitationCode: String): Boolean =
         handle
-            .createUpdate(
-                """
-                UPDATE registration_invitation
-                SET status = 'accepted'
-                WHERE invitation_token = :token
-                """,
-            ).bind("token", token.value)
-            .execute()
-    }
-
-    override fun declineRegistrationInvitation(token: Token) {
-        handle
-            .createUpdate(
-                """
-                UPDATE registration_invitation
-                SET status = 'rejected'
-                WHERE invitation_token = :token
-                """,
-            ).bind("token", token.value)
-            .execute()
-    }
+            .createQuery("""SELECT 1 FROM users WHERE invitation_code = :code""")
+            .bind("code", invitationCode)
+            .mapTo<Int>()
+            .singleOrNull() != null
 
     companion object {
         private val logger = LoggerFactory.getLogger(JdbiUsersRepository::class.java)
