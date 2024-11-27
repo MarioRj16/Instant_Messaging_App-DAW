@@ -29,9 +29,14 @@ const InvitationsPage: React.FC = () => {
         // TODO: Implement invitation acceptance logic
     };
 
+    const handleDeclineInvite = (id: string) => {
+        console.log(`Invitation ${id} declined.`);
+        //TODO: Implement invitation decline logic
+    }
+
     return (
         <Box display="flex" flexDirection="column" minHeight="100vh">
-            <Navbar title={"Invitations"} onLogoutClick={() => {}} />
+            <Navbar title={"Invitations"} canLogout={true} />
 
             <Box
                 display="flex"
@@ -71,15 +76,28 @@ const InvitationsPage: React.FC = () => {
                                         </>
                                     }
                                 />
-                                <Button
-                                    variant="contained"
-                                    color="primary"
-                                    disabled={isExpired}
-                                    onClick={() => handleAcceptInvite(invite.id)}
-                                    sx={{ minWidth: '100px' }}
-                                >
-                                    {isExpired ? 'Expired' : 'Accept'}
-                                </Button>
+                                <Box sx={{ display: 'flex', gap: 2 }}> {/* Add a Box with gap */}
+                                    <Button
+                                        variant="contained"
+                                        color="primary"
+                                        disabled={isExpired}
+                                        onClick={() => handleAcceptInvite(invite.id)}
+                                        sx={{ minWidth: '100px' }}
+                                    >
+                                        {isExpired ? 'Expired' : 'Accept'}
+                                    </Button>
+
+                                    <Button
+                                        variant="contained"
+                                        color="primary"
+                                        disabled={isExpired}
+                                        onClick={() => handleDeclineInvite(invite.id)}
+                                        sx={{ minWidth: '100px' }}
+                                    >
+                                        {isExpired ? 'Expired' : 'Decline'}
+                                    </Button>
+                                </Box>
+
                             </ListItem>
                         );
                     })}

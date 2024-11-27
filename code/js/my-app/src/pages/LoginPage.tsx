@@ -1,14 +1,28 @@
 import React, { useState } from 'react';
 import { Box, Button, TextField, Typography, Link } from '@mui/material';
+import {login} from "../services/UsersService";
+import {setAuthToken} from "../services/Utils/CookiesHandling";
+import {LoginOutputModel} from "../models/output/LoginOutputModel";
+import {useNavigate} from "react-router-dom";
 
 const LoginPage: React.FC = () => {
+
+    const navigate = useNavigate()
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
 
     const handleLogin = (e: React.FormEvent) => {
         e.preventDefault();
-        // Placeholder for login logic
-        console.log("Login submitted");
+
+        login({username, password}).then(r => {
+            if(r.contentType==="application/json"){
+                const token= r.json as LoginOutputModel;
+                setAuthToken(token.token);
+                navigate('/');
+            }
+            console.log("login failed")
+        })
+
     };
 
     return (

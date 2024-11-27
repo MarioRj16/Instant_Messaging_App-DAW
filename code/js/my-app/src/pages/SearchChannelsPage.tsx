@@ -19,14 +19,9 @@ const SearchChannelsPage: React.FC = () => {
         // TODO: Implement join channel functionality
     };
 
-    const handleLogout = () => {
-        // TODO: Implement logout functionality
-        navigate('/login');
-    };
-
     return (
         <Box display="flex" flexDirection="column" minHeight="100vh">
-            <Navbar title="Search Channels" onLogoutClick={handleLogout} />
+            <Navbar title="Search Channels" canLogout={true} />
 
             <Box display="flex" flexDirection="column" alignItems="center" flexGrow={1} p={2}>
                 <List sx={{ width: '80%'}}>

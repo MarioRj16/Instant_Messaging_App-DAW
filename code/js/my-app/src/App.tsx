@@ -20,11 +20,13 @@ function App() {
                 <Route path="/login" element={<LoginPage />} />
                 <Route path="/register" element={<RegisterPage />} />
                 <Route path="/channels" element={<YourChannels />}>
-                    {/* ChannelPage route */}
+
                     <Route path=":id" element={<ChannelPage />}>
-                        {/* ChannelSettingsPage nested under :id */}
+
                         <Route path="settings" element={<ChannelSettingsPage />} />
+                    
                     </Route>
+
                 </Route>
                 <Route path="/search-channels" element={<SearchChannelsPage />} />
                 <Route path="/create-channel" element={<CreateChannelPage />} />

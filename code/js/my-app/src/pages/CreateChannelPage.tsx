@@ -12,17 +12,13 @@ const CreateChannelPage: React.FC = () => {
         console.log(`Creating channel: ${channelName} (${channelType})`);
         // TODO: Implement create channel functionality
         // Navigate to the newly created channel or home page after creation
-        navigate('/your-channels');
+        navigate('/channels');
     };
 
-    const handleLogout = () => {
-        // TODO: Implement logout functionality
-        navigate('/login');
-    };
 
     return (
         <Box display="flex" flexDirection="column" minHeight="100vh">
-            <Navbar title={"Create Channel"} onLogoutClick={handleLogout} />
+            <Navbar title={"Create Channel"} canLogout={true} />
 
             <Box
                 display="flex"

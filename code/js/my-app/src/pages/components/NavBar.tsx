@@ -5,14 +5,15 @@ import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 // @ts-ignore
 import SettingsIcon from '@mui/icons-material/Settings';
 import { useNavigate, useLocation } from 'react-router-dom';
+import {logout} from "../../services/UsersService";
 
 interface NavbarProps {
     title: string;
     onBackClick?: () => void;
-    onLogoutClick: () => void;
+    canLogout: boolean;
 }
 
-const Navbar: React.FC<NavbarProps> = ({ title, onBackClick, onLogoutClick }) => {
+const Navbar: React.FC<NavbarProps> = ({ title, onBackClick, canLogout }) => {
     const navigate = useNavigate();
     const location = useLocation();
 
@@ -32,15 +33,19 @@ const Navbar: React.FC<NavbarProps> = ({ title, onBackClick, onLogoutClick }) =>
 
     const handleSettingsClick = () => {
         if (channelId) {
-            // If we're already in settings, navigate back to the channel page without '/settings'
             if (location.pathname.includes('/settings')) {
                 navigate(`/channels/${channelId}`);
             } else {
-                // Otherwise, navigate to the settings page
                 navigate(`/channels/${channelId}/settings`);
             }
         }
     };
+
+    const onLogoutClick = () => {
+        if (canLogout) {
+           logout().then(r => { navigate(`/login`)})
+        }
+    }
 
     return (
         <AppBar position="sticky">

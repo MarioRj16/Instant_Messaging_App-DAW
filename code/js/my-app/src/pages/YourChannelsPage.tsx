@@ -50,15 +50,10 @@ const YourChannels: React.FC = () => {
         navigate(`/channels/${id}`); // Navigate to the specific channel's route
     };
 
-    const handleLogout = () => {
-        // TODO: Implement logout functionality
-        navigate('/login');
-    };
-
     return (
         <Box display="flex" flexDirection="column" minHeight="100vh">
             {/* Navbar */}
-            <Navbar title="Your Channels" onLogoutClick={handleLogout} />
+            <Navbar title="Your Channels" canLogout={true} />
 
             {/* Content Area */}
             <Box display="flex" flexGrow={1}>
