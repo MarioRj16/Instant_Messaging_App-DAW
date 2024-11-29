@@ -5,68 +5,75 @@ import {
     TextField, FormControl, InputLabel, Select, MenuItem
 } from '@mui/material';
 import Navbar from "./components/NavBar";
+import {inviteMember, leaveChannel} from "../services/ChannelsService";
+import {useNavigate, useParams} from "react-router-dom";
 
-// Mock data for channel participants
-const participants = [
+// Mock data for channel members
+const members = [
     { id: '1', username: 'Alice', role: 'owner' },
-    { id: '2', username: 'Bob', role: 'participant' },
+    { id: '2', username: 'Bob', role: 'member' },
     { id: '3', username: 'Eve', role: 'viewer' },
     { id: '1', username: 'Alice', role: 'owner' },
-    { id: '2', username: 'Bob', role: 'participant' },
+    { id: '2', username: 'Bob', role: 'member' },
     { id: '3', username: 'Eve', role: 'viewer' },
     { id: '1', username: 'Alice', role: 'owner' },
-    { id: '2', username: 'Bob', role: 'participant' },
+    { id: '2', username: 'Bob', role: 'member' },
     { id: '3', username: 'Eve', role: 'viewer' },
     { id: '1', username: 'Alice', role: 'owner' },
-    { id: '2', username: 'Bob', role: 'participant' },
+    { id: '2', username: 'Bob', role: 'member' },
     { id: '3', username: 'Eve', role: 'viewer' },
     { id: '1', username: 'Alice', role: 'owner' },
-    { id: '2', username: 'Bob', role: 'participant' },
+    { id: '2', username: 'Bob', role: 'member' },
     { id: '3', username: 'Eve', role: 'viewer' },
     { id: '1', username: 'Alice', role: 'owner' },
-    { id: '2', username: 'Bob', role: 'participant' },
+    { id: '2', username: 'Bob', role: 'member' },
     { id: '3', username: 'Eve', role: 'viewer' },
-    // Add more participants if needed
+    // Add more members if needed
 ];
 
-type Role = 'owner' | 'participant' | 'viewer';
+type Role = 'owner' | 'member' | 'viewer';
 
 const ChannelSettingsPage: React.FC = () => {
+    const { id } = useParams<{ id: string }>();
     const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
     const [newUsername, setNewUsername] = useState('');
-    const [newUserRole, setNewUserRole] = useState<Role>('participant');
+    const [newUserRole, setNewUserRole] = useState<Role>('member');
     const currentUserRole: Role = 'owner'; // Mock current user's role
+    const navigate = useNavigate();
 
     // Toggle invite dialog
     const handleOpenInviteDialog = () => setInviteDialogOpen(true);
     const handleCloseInviteDialog = () => {
         setInviteDialogOpen(false);
         setNewUsername('');
-        setNewUserRole('participant');
+        setNewUserRole('member');
     };
 
     const handleInvite = () => {
         console.log(`Inviting ${newUsername} as ${newUserRole}`);
-        // TODO: Implement the invite logic (e.g., API call to invite user)
+
+
+        inviteMember(Number(id),{username: newUsername, role: newUserRole}).then()
         handleCloseInviteDialog();
     };
 
     // Leave Channel functionality
     const handleLeaveChannel = () => {
         console.log("Leaving the channel...");
-        // TODO: Implement leave channel functionality, such as API call
+        leaveChannel(Number(id)).then()
+        navigate('/');
     };
 
     return (
         <Box display="flex" flexDirection="column" minHeight="100vh" width="100%" height="100%">
-            {/* Participants List */}
+            {/* Members List */}
 
             <List sx={{ width: '100%', bgcolor: 'background.paper' }}>
-                {participants.map((participant) => (
-                    <ListItem key={participant.id} divider>
+                {members.map((member) => (
+                    <ListItem key={member.id} divider>
                         <ListItemText
-                            primary={participant.username}
-                            secondary={`Role: ${participant.role.charAt(0).toUpperCase() + participant.role.slice(1)}`}
+                            primary={member.username}
+                            secondary={`Role: ${member.role.charAt(0).toUpperCase() + member.role.slice(1)}`}
                         />
                     </ListItem>
                 ))}
@@ -80,7 +87,7 @@ const ChannelSettingsPage: React.FC = () => {
                     onClick={handleOpenInviteDialog}
                     sx={{ mt: 2 }}
                 >
-                    Invite Participant
+                    Invite Member
                 </Button>
             )}
 
@@ -96,7 +103,7 @@ const ChannelSettingsPage: React.FC = () => {
 
             {/* Invite Dialog */}
             <Dialog open={inviteDialogOpen} onClose={handleCloseInviteDialog}>
-                <DialogTitle>Invite a New Participant</DialogTitle>
+                <DialogTitle>Invite a New Member</DialogTitle>
                 <DialogContent>
                     <TextField
                         label="Username"
@@ -114,7 +121,7 @@ const ChannelSettingsPage: React.FC = () => {
                             onChange={(e) => setNewUserRole(e.target.value as Role)}
                             label="Role"
                         >
-                            <MenuItem value="participant">Participant</MenuItem>
+                            <MenuItem value="member">Member</MenuItem>
                             <MenuItem value="viewer">Viewer</MenuItem>
                         </Select>
                     </FormControl>

@@ -1,52 +1,32 @@
-import React from 'react';
-import { Box, Typography, List, ListItem, ListItemText, ListItemAvatar, Avatar } from '@mui/material';
-import { Outlet, useNavigate } from 'react-router-dom';
+import React, { useEffect, useState } from 'react';
+import { Box, Typography, List, ListItem, ListItemText, ListItemAvatar, Avatar, CircularProgress } from '@mui/material';
+import {Outlet, useNavigate} from 'react-router-dom';
 import Navbar from './components/NavBar';
-
-// Mock data for channels
-let channels = [
-    {
-        id: '1',
-        name: 'Family Group',
-        lastMessage: 'See you at dinner!',
-        timeSent: '10:30 AM',
-    },
-    {
-        id: '2',
-        name: 'Work Chat',
-        lastMessage: 'Project deadline is tomorrow.',
-        timeSent: '9:15 AM',
-    },
-    {
-        id: '3',
-        name: 'Friends',
-        lastMessage: 'Let’s go hiking this weekend!',
-        timeSent: 'Yesterday',
-    },
-    // More channels as needed
-];
-createMockChannels(channels, 4, 20);
-
-function createMockChannels(
-    channels: { name: string; lastMessage: string; timeSent: string; id: string }[],
-    start: number,
-    number: number
-) {
-    for (let i = start; i < number; i++) {
-        channels.push({
-            id: i.toString(),
-            name: `Channel ${i}`,
-            lastMessage: `Last message in channel ${i}`,
-            timeSent: '10:30 AM',
-        });
-    }
-    return channels;
-}
+import { GetChannelsListOutputModel } from '../models/output/GetChannelsListOutputModel';
+import {getChannels} from "../services/ChannelsService";
+import {ChannelOutputModel} from "../models/output/ChannelOutputModel"; // Ensure you have the correct type for channels
 
 const YourChannels: React.FC = () => {
     const navigate = useNavigate();
+    const [channels, setChannels] = useState<ChannelOutputModel[]>([]); // Assuming GetChannelsListOutputModel is the correct type
+    const [loading, setLoading] = useState<boolean>(true);
+    const [error, setError] = useState<string | null>(null);
 
-    const handleChannelClick = (id: string) => {
+    // Fetch channels when component mounts
+    useEffect(() => {
+        const fetchChannels = async () => {
+            const response = await getChannels();
+            if(response.contentType==="application/json") {
+                const channelsData = response.json as GetChannelsListOutputModel;
+                setChannels(channelsData.channels);  // Assuming response is an array of channels
+                setLoading(false);
+            }
+        };
+
+        fetchChannels();
+    }, []);
+
+    const handleChannelClick = (id: number) => {
         navigate(`/channels/${id}`); // Navigate to the specific channel's route
     };
 
@@ -67,39 +47,52 @@ const YourChannels: React.FC = () => {
                         maxHeight: 'calc(100vh - 64px)', // Account for the navbar height
                     }}
                 >
-                    <List>
-                        {channels.map((channel) => (
-                            <ListItem
-                                key={channel.id}
-                                onClick={() => handleChannelClick(channel.id)}
-                                sx={{
-                                    borderBottom: '1px solid #e0e0e0',
-                                    '&:hover': { backgroundColor: '#f9f9f9' },
-                                    cursor: 'pointer',
-                                }}
-                            >
-                                <ListItemAvatar>
-                                    <Avatar>{channel.name.charAt(0)}</Avatar>
-                                </ListItemAvatar>
-                                <ListItemText
-                                    primary={channel.name}
-                                    secondary={
-                                        <React.Fragment>
-                                            <Typography
-                                                component="span"
-                                                variant="body2"
-                                                color="text.primary"
-                                            >
-                                                {channel.lastMessage}
-                                            </Typography>
-                                            {' — '}
-                                            {channel.timeSent}
-                                        </React.Fragment>
-                                    }
-                                />
-                            </ListItem>
-                        ))}
-                    </List>
+                    {loading ? (
+                        <Box display="flex" justifyContent="center" alignItems="center" height="100%">
+                            <CircularProgress />
+                        </Box>
+                    ) : error ? (
+                        <Box display="flex" justifyContent="center" alignItems="center" height="100%">
+                            <Typography color="error">{error}</Typography>
+                        </Box>
+                    ) : (
+                        <List>
+                            {channels.map((channel) => (
+                                <ListItem
+                                    key={channel.channelId}
+                                    onClick={() => handleChannelClick(channel.channelId)}
+                                    sx={{
+                                        borderBottom: '1px solid #e0e0e0',
+                                        '&:hover': { backgroundColor: '#f9f9f9' },
+                                        cursor: 'pointer',
+                                    }}
+                                >
+                                    <ListItemAvatar>
+                                        <Avatar>{channel.channelName.charAt(0)}</Avatar>
+                                    </ListItemAvatar>
+                                    <ListItemText
+                                        primary={channel.channelName}
+                                        /*
+                                        secondary={
+                                            <React.Fragment>
+                                                <Typography
+                                                    component="span"
+                                                    variant="body2"
+                                                    color="text.primary"
+                                                >
+                                                    {channel.lastMessage}
+                                                </Typography>
+                                                {' — '}
+                                                {channel.timeSent}
+                                            </React.Fragment>
+                                        }
+                                        
+                                         */
+                                    />
+                                </ListItem>
+                            ))}
+                        </List>
+                    )}
                 </Box>
 
                 {/* Right Content Area (Sub-router outlet) */}

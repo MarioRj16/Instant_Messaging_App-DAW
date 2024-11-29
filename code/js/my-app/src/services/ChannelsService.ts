@@ -7,6 +7,7 @@ import {GetChannelsListOutputModel} from "../models/output/GetChannelsListOutput
 import {InviteMemberInputModel} from "../models/input/InviteMemberInputModel";
 import {GetMessagesListOutputModel} from "../models/output/GetMessagesListOutputModel";
 import {getAuthToken} from "./Utils/CookiesHandling";
+import {GetChannelInvitationsListOutputModel} from "../models/output/GetChannelInvitationsListOutputModel";
 
 
 export async function createChannel(body: CreateChannelInputModel) {
@@ -71,20 +72,20 @@ export async function sendMessage(id: number,body: SendMessageInputModel) {
 export async function getListInvitations(){
     const uri='/channel/invitations';
     const cookies= getAuthToken()
-    return await callApi<null, GetChannelsListOutputModel>(uri, Method.GET,undefined,cookies);
+    return await callApi<null, GetChannelInvitationsListOutputModel>(uri, Method.GET,undefined,cookies);
 }
 
 export async function acceptInvitation(id: number) {
     const uri= replaceParams('/channel/invitations/{id}/accept',{id:id});
     const cookies= getAuthToken()
-    return await callApi(uri, Method.POST,undefined,cookies);
+    return await callApi(uri, Method.GET,undefined,cookies);
     //TODO(CHANGE METHOD???
 }
 
 export async function declineInvitation(id: number) {
     const uri= replaceParams('/channel/invitations/{id}/decline',{id:id});
     const cookies= getAuthToken()
-    return await callApi(uri, Method.POST,undefined,cookies);
+    return await callApi(uri, Method.GET,undefined,cookies);
     //TODO(CHANGE METHOD???
 }
 

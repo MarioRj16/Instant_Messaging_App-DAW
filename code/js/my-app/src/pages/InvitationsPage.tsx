@@ -1,42 +1,62 @@
-import React from 'react';
-import { Box, Button, List, ListItem, ListItemText, Typography } from '@mui/material';
+import React, { useEffect, useState } from 'react';
+import { Box, Button, List, ListItem, ListItemText, Typography, CircularProgress } from '@mui/material';
 // @ts-ignore
 import dayjs from 'dayjs';
 import Navbar from "./components/NavBar";
-
-// Mock data for invitations
-const invitations = [
-    {
-        id: '1',
-        channelName: 'React Devs',
-        owner: 'Alice',
-        inviter: 'Bob',
-        expirationDate: '2024-12-01',
-    },
-    {
-        id: '2',
-        channelName: 'JavaScript Enthusiasts',
-        owner: 'Charlie',
-        inviter: 'Dave',
-        expirationDate: '2023-11-01',
-    },
-    // Add more invitations as needed
-];
+import { getListInvitations, acceptInvitation, declineInvitation } from "../services/ChannelsService";
+import { GetChannelsListOutputModel } from "../models/output/GetChannelsListOutputModel";
+import {ChannelInvitationOutputModel} from "../models/output/ChannelInvitationOutputModel";
+import {GetChannelInvitationsListOutputModel} from "../models/output/GetChannelInvitationsListOutputModel";
 
 const InvitationsPage: React.FC = () => {
-    const handleAcceptInvite = (id: string) => {
-        console.log(`Invitation ${id} accepted.`);
-        // TODO: Implement invitation acceptance logic
+    const [invitations, setInvitations] = useState<ChannelInvitationOutputModel[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [actionInProgress, setActionInProgress] = useState<number | null>(null);
+
+    useEffect(() => {
+        const fetchInvitations = async () => {
+            try {
+                setLoading(true);
+                const response = await getListInvitations();
+                const data = response.json as GetChannelInvitationsListOutputModel;
+                setInvitations(data.invitations);
+            } catch (error) {
+                console.error('Failed to fetch invitations:', error);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchInvitations();
+    }, []);
+
+    const handleAcceptInvite = async (id: number) => {
+        setActionInProgress(id);
+        try {
+            await acceptInvitation(id);
+            setInvitations((prev) => prev.filter((invite) => invite.channelId !== id));
+        } catch (error) {
+            console.error(`Failed to accept invitation ${id}:`, error);
+        } finally {
+            setActionInProgress(null);
+        }
     };
 
-    const handleDeclineInvite = (id: string) => {
-        console.log(`Invitation ${id} declined.`);
-        //TODO: Implement invitation decline logic
-    }
+    const handleDeclineInvite = async (id: number) => {
+        setActionInProgress(id);
+        try {
+            await declineInvitation(id);
+            setInvitations((prev) => prev.filter((invite) => invite.channelId !== id));
+        } catch (error) {
+            console.error(`Failed to decline invitation ${id}:`, error);
+        } finally {
+            setActionInProgress(null);
+        }
+    };
 
     return (
         <Box display="flex" flexDirection="column" minHeight="100vh">
-            <Navbar title={"Invitations"} canLogout={true} />
+            <Navbar title="Invitations" canLogout={true} />
 
             <Box
                 display="flex"
@@ -45,63 +65,66 @@ const InvitationsPage: React.FC = () => {
                 flexGrow={1}
                 p={2}
             >
-                <List sx={{ width: '80%'}}>
-                    {invitations.map((invite) => {
-                        const isExpired = dayjs().isAfter(dayjs(invite.expirationDate));
+                {loading ? (
+                    <CircularProgress />
+                ) : invitations.length === 0 ? (
+                    <Typography variant="h6">No invitations available.</Typography>
+                ) : (
+                    <List sx={{ width: '80%' }}>
+                        {invitations.map((invite) => {
+                            const isExpired = dayjs().isAfter(dayjs(invite.createdAt));
 
-                        return (
-                            <ListItem
-                                key={invite.id}
-                                sx={{
-                                    display: 'flex',
-                                    justifyContent: 'space-between',
-                                    alignItems: 'center',
-                                    borderBottom: '1px solid #ddd',
-                                    paddingY: 2,
-                                }}
-                            >
-                                <ListItemText
-                                    primary={`${invite.channelName}`}
-                                    secondary={
-                                        <>
-                                            <Typography variant="body2">
-                                                <strong>Owner:</strong> {invite.owner}
-                                            </Typography>
-                                            <Typography variant="body2">
-                                                <strong>Inviter:</strong> {invite.inviter}
-                                            </Typography>
-                                            <Typography variant="body2">
-                                                <strong>Expires on:</strong> {dayjs(invite.expirationDate).format('YYYY-MM-DD')}
-                                            </Typography>
-                                        </>
-                                    }
-                                />
-                                <Box sx={{ display: 'flex', gap: 2 }}> {/* Add a Box with gap */}
-                                    <Button
-                                        variant="contained"
-                                        color="primary"
-                                        disabled={isExpired}
-                                        onClick={() => handleAcceptInvite(invite.id)}
-                                        sx={{ minWidth: '100px' }}
-                                    >
-                                        {isExpired ? 'Expired' : 'Accept'}
-                                    </Button>
+                            return (
+                                <ListItem
+                                    key={invite.channelInvitationId}
+                                    sx={{
+                                        display: 'flex',
+                                        justifyContent: 'space-between',
+                                        alignItems: 'center',
+                                        borderBottom: '1px solid #ddd',
+                                        paddingY: 2,
+                                    }}
+                                >
+                                    <ListItemText
+                                        primary={`${invite.channelId} - ${invite.role}`}
+                                        secondary={
+                                            <>
+                                                <Typography variant="body2">
+                                                    <strong>Owner:</strong> {invite.inviterId}
+                                                </Typography>
+                                                <Typography variant="body2">
+                                                    <strong>Inviter:</strong> {invite.inviterId}
+                                                </Typography>
+                                                <Typography variant="body2">
+                                                    <strong>Invited :</strong> {dayjs(invite.createdAt).format('YYYY-MM-DD')}
+                                                </Typography>
+                                            </>
+                                        }
+                                    />
+                                    <Box sx={{ display: 'flex', gap: 2 }}>
+                                        <Button
+                                            variant="contained"
+                                            color="primary"
+                                            onClick={() => handleAcceptInvite(invite.channelId)}
+                                            sx={{ minWidth: '100px' }}
+                                        >
+                                            {'Accept'}
+                                        </Button>
 
-                                    <Button
-                                        variant="contained"
-                                        color="primary"
-                                        disabled={isExpired}
-                                        onClick={() => handleDeclineInvite(invite.id)}
-                                        sx={{ minWidth: '100px' }}
-                                    >
-                                        {isExpired ? 'Expired' : 'Decline'}
-                                    </Button>
-                                </Box>
-
-                            </ListItem>
-                        );
-                    })}
-                </List>
+                                        <Button
+                                            variant="contained"
+                                            color="primary"
+                                            onClick={() => handleDeclineInvite(invite.channelId)}
+                                            sx={{ minWidth: '100px' }}
+                                        >
+                                            { 'Decline'}
+                                        </Button>
+                                    </Box>
+                                </ListItem>
+                            );
+                        })}
+                    </List>
+                )}
             </Box>
         </Box>
     );

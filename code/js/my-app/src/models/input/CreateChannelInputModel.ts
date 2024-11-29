@@ -1,4 +1,4 @@
 export type CreateChannelInputModel = {
-    name: string
+    channelName: string
     isPublic: boolean
 }

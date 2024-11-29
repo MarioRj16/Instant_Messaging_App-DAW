@@ -2,23 +2,26 @@ import React, { useState } from 'react';
 import { Box, Button, TextField, Typography, FormControl, InputLabel, Select, MenuItem } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import Navbar from "./components/NavBar";
+import { createChannel } from "../services/ChannelsService";
 
 const CreateChannelPage: React.FC = () => {
     const [channelName, setChannelName] = useState('');
-    const [channelType, setChannelType] = useState<'public' | 'private'>('public');
+    const [channelType, setChannelType] = useState<boolean>(true);
     const navigate = useNavigate();
 
     const handleCreateChannel = () => {
         console.log(`Creating channel: ${channelName} (${channelType})`);
-        // TODO: Implement create channel functionality
-        // Navigate to the newly created channel or home page after creation
-        navigate('/channels');
-    };
 
+        createChannel({ channelName: channelName, isPublic: channelType }).then(() => {
+            navigate('/channels');
+        }).catch((error) => {
+            console.error('Failed to create channel:', error);
+        });
+    };
 
     return (
         <Box display="flex" flexDirection="column" minHeight="100vh">
-            <Navbar title={"Create Channel"} canLogout={true} />
+            <Navbar title="Create Channel" canLogout={true} />
 
             <Box
                 display="flex"
@@ -57,10 +60,10 @@ const CreateChannelPage: React.FC = () => {
                             labelId="channel-type-label"
                             label="Channel Type"
                             value={channelType}
-                            onChange={(e) => setChannelType(e.target.value as 'public' | 'private')}
+                            onChange={(e) => setChannelType(e.target.value === 'true')}
                         >
-                            <MenuItem value="public">Public</MenuItem>
-                            <MenuItem value="private">Private</MenuItem>
+                            <MenuItem value="true">Public</MenuItem>
+                            <MenuItem value="false">Private</MenuItem>
                         </Select>
                     </FormControl>
 

@@ -1,14 +1,20 @@
 import React, { useState } from 'react';
 import { Box, Button, TextField, Typography, Link, Alert } from '@mui/material';
+import {login, register} from "../services/UsersService";
+import {RegisterOutputModel} from "../models/output/RegisterOutputModel";
+import {setAuthToken} from "../services/Utils/CookiesHandling";
+import {LoginOutputModel} from "../models/output/LoginOutputModel";
+import {useNavigate} from "react-router-dom";
 
 const RegisterPage: React.FC = () => {
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
-    const [token,setToken] = useState('');
+    const [invitationCode,setInvitationCode] = useState('');
     const [error, setError] = useState('');
+    const navigate= useNavigate();
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleRegister = (e: React.FormEvent) => {
         e.preventDefault();
 
         if (password !== confirmPassword) {
@@ -17,7 +23,24 @@ const RegisterPage: React.FC = () => {
         }
 
         setError('');
-        // Handle successful registration logic here
+
+        register({ username, password, invitationCode }).then(r => {
+            console.log(r.json)
+            if (r.contentType === "application/json") {
+                login({username, password}).then(res => {
+                    console.log(res.json)
+                    if(r.contentType==="application/json"){
+                        const token= res.json as LoginOutputModel;
+                        setAuthToken(token.token);
+                        navigate('/');
+                    }
+                    console.log("login failed")
+                })
+
+            }
+            console.log("login failed")
+        })
+
         console.log("Form submitted successfully!");
     };
 
@@ -32,7 +55,7 @@ const RegisterPage: React.FC = () => {
             <Typography variant="h4" component="h1" gutterBottom>
                 Register
             </Typography>
-            <Box component="form" onSubmit={handleSubmit} sx={{ display: 'flex', flexDirection: 'column', gap: 2, width: '100%', maxWidth: 400 }}>
+            <Box component="form" onSubmit={handleRegister} sx={{ display: 'flex', flexDirection: 'column', gap: 2, width: '100%', maxWidth: 400 }}>
                 <TextField
                     label="Username"
                     name="username"
@@ -68,8 +91,8 @@ const RegisterPage: React.FC = () => {
                     variant="outlined"
                     fullWidth
                     required
-                    value={token}
-                    onChange={(e) => setToken(e.target.value)}
+                    value={invitationCode}
+                    onChange={(e) => setInvitationCode(e.target.value)}
                 />
                 {error && <Alert severity="error">{error}</Alert>}
                 <Button type="submit" variant="contained" color="primary" fullWidth>

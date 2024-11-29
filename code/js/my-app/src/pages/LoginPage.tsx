@@ -15,6 +15,7 @@ const LoginPage: React.FC = () => {
         e.preventDefault();
 
         login({username, password}).then(r => {
+            console.log(r.json)
             if(r.contentType==="application/json"){
                 const token= r.json as LoginOutputModel;
                 setAuthToken(token.token);

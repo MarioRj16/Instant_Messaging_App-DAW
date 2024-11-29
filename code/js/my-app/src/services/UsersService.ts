@@ -9,7 +9,7 @@ import {getAuthToken} from "./Utils/CookiesHandling";
 
 
 export async function register(body: RegisterInputModel) {
-    const uri='/register';
+    const uri='/users';
     return await callApi<RegisterInputModel, RegisterOutputModel>(uri, Method.POST, body);
 }
 

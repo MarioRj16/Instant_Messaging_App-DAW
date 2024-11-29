@@ -10,9 +10,14 @@ export function getAuthToken (): string | undefined{
 }
 
 export function setAuthToken (token: string) {
-    document.cookie = `authToken=${token}; path=/; secure; HttpOnly; SameSite=Strict`;
+    const isProduction = process.env.NODE_ENV === 'production';
+    const cookieAttributes = `path=/; SameSite=Strict; ${isProduction ? 'secure;' : ''}`;
+    document.cookie = `authToken=${token}; ${cookieAttributes}`;
 }
 
 export function removeAuthToken() {
-    document.cookie = `authToken=; path=/; secure; HttpOnly; SameSite=Strict; expires=Thu, 01 Jan 1970 00:00:00 UTC;`;
+    const isProduction = process.env.NODE_ENV === 'production';
+    const cookieAttributes = `path=/; SameSite=Strict; ${isProduction ? 'secure;' : ''}`;
+    document.cookie = `authToken=; ${cookieAttributes} expires=Thu, 01 Jan 1970 00:00:00 UTC;`;
 }
+
