@@ -7,7 +7,7 @@ export enum Method {
     GET = 'GET',
     POST = 'POST',
     PUT = 'PUT',
-    DELETE = 'DELETE',
+    DELETE = 'DELETE'
 }
 
 
@@ -36,6 +36,8 @@ export async function callApi<B, T>(uri: string, method: Method, body?: B,token?
                 // @ts-ignore
                 response = await apiConnection.deleteApi(completeUri,token);
                 return response;
+
+
         }
     } catch (error) {
         return (await error) as ApiResponse<ProblemModel>;

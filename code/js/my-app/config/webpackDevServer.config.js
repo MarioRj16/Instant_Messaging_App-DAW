@@ -13,6 +13,9 @@ const sockHost = process.env.WDS_SOCKET_HOST;
 const sockPath = process.env.WDS_SOCKET_PATH; // default: '/ws'
 const sockPort = process.env.WDS_SOCKET_PORT;
 
+// Utility function to simulate delay
+const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
 module.exports = function (proxy, allowedHost) {
   const disableFirewall =
       !proxy || process.env.DANGEROUSLY_DISABLE_HOST_CHECK === 'true';
@@ -27,7 +30,7 @@ module.exports = function (proxy, allowedHost) {
       'Access-Control-Allow-Headers': '*',
     },
 
-    compress: true,
+    compress: false,
     static: {
       directory: paths.appPublic,
       publicPath: [paths.publicUrlOrPath],
@@ -55,7 +58,31 @@ module.exports = function (proxy, allowedHost) {
       disableDotRule: true,
       index: paths.publicUrlOrPath,
     },
-    proxy,
+    proxy: {
+      '/api': {
+        target: 'http://localhost:8080',
+
+        // Simulate delay for easier testing
+        pathRewrite: async function (path, req) {
+          await delay(1000); // Introducing a 1-second delay
+          return path;
+        },
+        onProxyRes: (proxyRes, req, res) => {
+          // Handle proxy response close events
+          proxyRes.on('close', () => {
+            if (!res.writableEnded) {
+              res.end();
+            }
+          });
+
+          res.on('close', () => {
+            console.log("Request closed");
+            proxyRes.destroy();
+          });
+        },
+      },
+    },
+
     onBeforeSetupMiddleware(devServer) {
       devServer.app.use(evalSourceMapMiddleware(devServer));
 

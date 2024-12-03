@@ -1,6 +1,6 @@
 import {UserOutputModel} from "./UserOutputModel";
 
-export type MessagesOutputModel = {
+export type MessageOutputModel = {
     messageId: number,
     senderInfo: UserOutputModel,
     channelId: number,

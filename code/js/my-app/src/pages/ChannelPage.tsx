@@ -3,58 +3,65 @@ import { Box, List, ListItem, ListItemText, TextField, Button } from '@mui/mater
 import SendIcon from '@mui/icons-material/Send';
 import { useParams, useLocation, Outlet } from 'react-router-dom';
 import { GetMessagesListOutputModel } from '../models/output/GetMessagesListOutputModel';
-import {getMessages, listenMessages, sendMessage} from "../services/ChannelsService";
-import {MessagesOutputModel} from "../models/output/MessagesOutputModel";
-import {UserOutputModel} from "../models/output/UserOutputModel";
-import {me} from "../services/UsersService";
+import { getMessages, listenToMessages, sendMessage } from "../services/ChannelsService";
+import { UserOutputModel } from "../models/output/UserOutputModel";
+import { me } from "../services/UsersService";
+import { MessageOutputModel } from "../models/output/MessagesOutputModel";
 
 const ChannelPage: React.FC = () => {
     const { id } = useParams<{ id: string }>(); // Channel ID from URL
     const location = useLocation();
 
     const [currentUser, setCurrentUser] = useState<UserOutputModel>(); // Change this to the actual logged-in user name
-    const [messages, setMessages] = useState<MessagesOutputModel[]>([]); // Manage messages with state
+    const [messages, setMessages] = useState<MessageOutputModel[]>([]); // Manage messages with state
     const [newMessage, setNewMessage] = useState(''); // Store new message input
 
-   // const currentUser = 'You'; // Change this to the actual logged-in user name
-
-
     const messagesEndRef = useRef<HTMLDivElement | null>(null); // Ref for auto-scroll
+    const eventSourceRef = useRef<EventSource | null>(null); // To store the EventSource for cleanup
 
+    // Fetch user and messages initially
     useEffect(() => {
         const fetchUser = async () => {
-            const response = await me()
-            if (response.contentType==="application/json"){
-                console.log(response.json)
-                const user = response.json as UserOutputModel
+            const response = await me();
+            if (response.contentType === "application/json") {
+                const user = response.json as UserOutputModel;
                 setCurrentUser(user);
             }
-        }
+        };
 
         const fetchMessages = async () => {
             if (id) {
                 try {
                     const fetchedMessages = await getMessages(Number(id));
                     const messagesData = fetchedMessages.json as GetMessagesListOutputModel;
-                    setMessages(messagesData.messages.sort((a,b) => a.createdAt.localeCompare(b.createdAt)));
-                   // setMessages(messagesData.messages.reverse()); // Set fetched messages
+                    setMessages(messagesData.messages.sort((a, b) => a.createdAt.localeCompare(b.createdAt)));
                 } catch (error) {
                     console.error('Failed to fetch messages:', error);
                 }
             }
         };
+
         fetchUser();
         fetchMessages();
     }, [id]);
-/*
-    // Set up real-time listener for new messages
+
+    // Set up EventSource for listening to new messages
     useEffect(() => {
         if (!id) return;
 
-        const eventSource = listenMessages(Number(id)); // Start listening for messages
+        // Open connection and listen for messages
+        const eventSource = listenToMessages();
+        eventSourceRef.current = eventSource;
+
+        eventSource.onopen = () => {
+            console.log('Listening to messages...');
+        };
+
         eventSource.onmessage = (event) => {
-            const newIncomingMessage = JSON.parse(event.data); // Parse incoming message
-            setMessages((prevMessages) => [...prevMessages, newIncomingMessage]); // Add new message
+            console.log("RIGHT????")
+            const newIncomingMessage = JSON.parse(event.data) as MessageOutputModel; // Parse incoming message
+            console.log('New message:', newIncomingMessage);
+            if (newIncomingMessage.channelId===Number(id)) setMessages((prevMessages) => [...prevMessages, newIncomingMessage]); // Add new message
         };
 
         eventSource.onerror = (error) => {
@@ -62,13 +69,15 @@ const ChannelPage: React.FC = () => {
             eventSource.close(); // Close the connection on error
         };
 
-        // Clean up the event source on unmount
+        // Cleanup EventSource when the component unmounts or id changes
         return () => {
-            eventSource.close();
+            if (eventSourceRef.current) {
+                eventSourceRef.current.close();
+                console.log('EventSource closed');
+            }
         };
-    }, [id]);
 
- */
+    }, [id]);
 
     // Auto-scroll to the latest message
     useEffect(() => {
@@ -77,25 +86,7 @@ const ChannelPage: React.FC = () => {
         }
     }, [messages]);
 
-/*
     // Handle message send
-    const handleSendMessage = () => {
-        if (newMessage.trim() !== '') {
-            setMessages([
-                ...messages,
-                {
-                    id: (messages.length + 1).toString(),
-                    text: newMessage,
-                    sender: currentUser,
-                    timeSent: new Date().toLocaleTimeString(),
-                },
-            ]);
-            setNewMessage('');
-        }
-    };
-
- */
-
     const handleSendMessage = async () => {
         if (newMessage.trim() !== '') {
             const message = {
@@ -108,14 +99,13 @@ const ChannelPage: React.FC = () => {
                 console.error('Failed to send message:', error);
             }
         }
-    }
+    };
 
     // Handle Enter key for sending message
     const handleKeyDown = (e: React.KeyboardEvent) => {
         if (e.key === 'Enter') {
             e.preventDefault();
             handleSendMessage();
-
         }
     };
 
@@ -146,7 +136,7 @@ const ChannelPage: React.FC = () => {
                             <ListItem key={message.messageId} sx={{ mb: 1, display: 'flex', alignItems: 'flex-start' }}>
                                 <ListItemText
                                     primary={
-                                        message.senderInfo.userId == currentUser?.userId
+                                        message.senderInfo.userId === currentUser?.userId
                                             ? message.content
                                             : `${message.senderInfo.username}: ${message.content}`
                                     }
@@ -154,10 +144,10 @@ const ChannelPage: React.FC = () => {
                                     sx={{
                                         borderRadius: 2,
                                         p: 1.5,
-                                        alignSelf: message.senderInfo.userId == currentUser?.userId ? 'flex-end' : 'flex-start',
-                                        textAlign: message.senderInfo.userId == currentUser?.userId ? 'right' : 'left',
-                                        backgroundColor: message.senderInfo.userId == currentUser?.userId ? '#4CAF50' : '#e0e0e0',
-                                        color: message.senderInfo.userId == currentUser?.userId ? '#fff' : 'inherit',
+                                        alignSelf: message.senderInfo.userId === currentUser?.userId ? 'flex-end' : 'flex-start',
+                                        textAlign: message.senderInfo.userId === currentUser?.userId ? 'right' : 'left',
+                                        backgroundColor: message.senderInfo.userId === currentUser?.userId ? '#4CAF50' : '#e0e0e0',
+                                        color: message.senderInfo.userId === currentUser?.userId ? '#fff' : 'inherit',
                                     }}
                                 />
                             </ListItem>
@@ -181,7 +171,6 @@ const ChannelPage: React.FC = () => {
                         onChange={(e) => setNewMessage(e.target.value)}
                         onKeyDown={handleKeyDown}
                         placeholder="Type a message"
-                        //TODO(disabled={} WHEN we get membership)
                         variant="outlined"
                         size="small"
                         sx={{ mr: 1 }}

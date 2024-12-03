@@ -8,6 +8,7 @@ import {InviteMemberInputModel} from "../models/input/InviteMemberInputModel";
 import {GetMessagesListOutputModel} from "../models/output/GetMessagesListOutputModel";
 import {getAuthToken} from "./Utils/CookiesHandling";
 import {GetChannelInvitationsListOutputModel} from "../models/output/GetChannelInvitationsListOutputModel";
+import {MessageOutputModel} from "../models/output/MessagesOutputModel";
 
 
 export async function createChannel(body: CreateChannelInputModel) {
@@ -56,12 +57,27 @@ export async function getMessages(id: number) {
     return await callApi<null,GetMessagesListOutputModel>(uri, Method.GET,undefined,cookies);
 }
 
-export async function listenMessages(id: number) {
-    const uri= replaceParams('/channel/{id}',{id:id});
+export function listenToMessages(): EventSource {
+    const uri = '/api/channel/listen'; // Ensure this matches your backend URI
 
-    const cookies= getAuthToken()
-    return await callApi(uri, Method.GET,undefined,cookies);
+    const eventSource = new EventSource(uri);
+    eventSource.onopen = () => {
+        console.log('Listening to messages...');
+
+    };
+
+    return eventSource;
 }
+
+
+/*
+export function listenToMessages(): EventSource {
+    const uri = 'http://localhost:8080/api/channel/listen';
+    const eventSource = new EventSource(uri);
+    return eventSource
+}
+
+ */
 
 export async function sendMessage(id: number,body: SendMessageInputModel) {
     const uri= replaceParams('/channel/{id}',{id:id});

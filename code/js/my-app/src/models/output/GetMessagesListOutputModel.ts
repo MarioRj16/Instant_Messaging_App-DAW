@@ -1,6 +1,7 @@
-import {MessagesOutputModel} from "./MessagesOutputModel";
+import {MessageOutputModel} from "./MessagesOutputModel";
+
 
 export type GetMessagesListOutputModel = {
-    messages: MessagesOutputModel[],
+    messages: MessageOutputModel[],
     size: number
 }
