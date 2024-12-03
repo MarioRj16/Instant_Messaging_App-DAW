@@ -58,7 +58,6 @@ const ChannelPage: React.FC = () => {
         };
 
         eventSource.onmessage = (event) => {
-            console.log("RIGHT????")
             const newIncomingMessage = JSON.parse(event.data) as MessageOutputModel; // Parse incoming message
             console.log('New message:', newIncomingMessage);
             if (newIncomingMessage.channelId===Number(id)) setMessages((prevMessages) => [...prevMessages, newIncomingMessage]); // Add new message
