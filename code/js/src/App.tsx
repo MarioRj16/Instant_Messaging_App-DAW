@@ -11,29 +11,78 @@ import InvitationsPage from './pages/InvitationsPage';
 import SearchChannelsPage from './pages/SearchChannelsPage';
 import CreateChannelPage from './pages/CreateChannelPage';
 import ChannelSettingsPage from './pages/ChannelSettingsPage';
+import ProtectedRoute from './ProtectedRoute';
 import './App.css';
 
 function App() {
     return (
-      <div className="App-content">
-          <Routes>
-              <Route path="/" element={<HomePage />} />
-              <Route path="/login" element={<LoginPage />} />
-              <Route path="/register" element={<RegisterPage />} />
-              <Route path="/channels" element={<YourChannels />}>
+        <div className="App-content">
+            <Routes>
+                {/* Public Routes */}
+                <Route path="/login" element={<LoginPage />} />
+                <Route path="/register" element={<RegisterPage />} />
 
-                  <Route path=":id" element={<ChannelPage />}>
-
-                      <Route path="settings" element={<ChannelSettingsPage />} />
-
-                  </Route>
-
-              </Route>
-              <Route path="/search-channels" element={<SearchChannelsPage />} />
-              <Route path="/create-channel" element={<CreateChannelPage />} />
-              <Route path="/invitations" element={<InvitationsPage />} />
-          </Routes>
-      </div>
+                {/* Protected Routes */}
+                <Route
+                    path="/"
+                    element={
+                        <ProtectedRoute>
+                            <HomePage />
+                        </ProtectedRoute>
+                    }
+                />
+                <Route
+                    path="/channels"
+                    element={
+                        <ProtectedRoute>
+                            <YourChannels />
+                        </ProtectedRoute>
+                    }
+                >
+                    <Route
+                        path=":id"
+                        element={
+                            <ProtectedRoute>
+                                <ChannelPage />
+                            </ProtectedRoute>
+                        }
+                    >
+                        <Route
+                            path="settings"
+                            element={
+                                <ProtectedRoute>
+                                    <ChannelSettingsPage />
+                                </ProtectedRoute>
+                            }
+                        />
+                    </Route>
+                </Route>
+                <Route
+                    path="/search-channels"
+                    element={
+                        <ProtectedRoute>
+                            <SearchChannelsPage />
+                        </ProtectedRoute>
+                    }
+                />
+                <Route
+                    path="/create-channel"
+                    element={
+                        <ProtectedRoute>
+                            <CreateChannelPage />
+                        </ProtectedRoute>
+                    }
+                />
+                <Route
+                    path="/invitations"
+                    element={
+                        <ProtectedRoute>
+                            <InvitationsPage />
+                        </ProtectedRoute>
+                    }
+                />
+            </Routes>
+        </div>
     );
 }
 
