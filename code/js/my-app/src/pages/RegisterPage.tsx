@@ -33,8 +33,7 @@ const RegisterPage: React.FC = () => {
                         const token= res.json as LoginOutputModel;
                         setAuthToken(token.token);
                         navigate('/');
-                    }
-                    console.log("login failed")
+                    }else console.log("login failed")
                 })
 
             }

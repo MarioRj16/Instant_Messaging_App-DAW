@@ -20,8 +20,7 @@ const LoginPage: React.FC = () => {
                 const token= r.json as LoginOutputModel;
                 setAuthToken(token.token);
                 navigate('/');
-            }
-            console.log("login failed")
+            } else console.log("login failed")
         })
 
     };
