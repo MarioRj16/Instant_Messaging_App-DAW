@@ -1,9 +1,7 @@
 import React from 'react';
 import { Route, Routes } from 'react-router-dom';
-// @ts-ignore
-import LoginPage from './pages/LoginPage.tsx';
-// @ts-ignore
-import HomePage from './pages/HomePage.tsx';
+import LoginPage from './pages/LoginPage';
+import HomePage from './pages/HomePage';
 import RegisterPage from './pages/RegisterPage';
 import YourChannels from './pages/YourChannelsPage';
 import ChannelPage from './pages/ChannelPage';
@@ -11,6 +9,7 @@ import InvitationsPage from './pages/InvitationsPage';
 import SearchChannelsPage from './pages/SearchChannelsPage';
 import CreateChannelPage from './pages/CreateChannelPage';
 import ChannelSettingsPage from './pages/ChannelSettingsPage';
+import NotFoundPage from "./pages/NotFoundPage";
 import ProtectedRoute from './ProtectedRoute';
 import './App.css';
 
@@ -81,6 +80,8 @@ function App() {
                         </ProtectedRoute>
                     }
                 />
+                <Route path="*" element={<NotFoundPage />} />
+
             </Routes>
         </div>
     );

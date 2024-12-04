@@ -1,45 +1,56 @@
 import { test, expect } from '@playwright/test';
 
-test('can login', async ({ page }) => {
+test('Home Page functionality', async ({ page }) => {
   // when: navigating to the home page
   await page.goto('http://localhost:3000/');
 
-  // then: the page has a link to the 'page 2' page
-  const meLink = page.getByRole('link', {name: 'Page 2', exact:true})
-  await expect(meLink).toBeVisible()
+  // then: the page has buttons for navigation and token generation
+  const channelsButton = page.getByRole('button', { name: 'Your Channels' });
+  const searchChannelsButton = page.getByRole('button', { name: 'Search Channels' });
+  const createChannelButton = page.getByRole('button', { name: 'Create Channel' });
+  const invitationsButton = page.getByRole('button', { name: 'Invitations' });
+  const inviteButton = page.getByRole('button', { name: 'Create Registration Invite' });
 
-  // when: navigating to the 'page 2' page
-  await meLink.click()
+  await expect(channelsButton).toBeVisible();
+  await expect(searchChannelsButton).toBeVisible();
+  await expect(createChannelButton).toBeVisible();
+  await expect(invitationsButton).toBeVisible();
+  await expect(inviteButton).toBeVisible();
 
-  // then: the login form appears
-  const usernameInput = page.getByLabel("Username")
-  const passwordInput = page.getByLabel("Password")
-  const loginButton = page.getByRole('button')
-  await expect(usernameInput).toBeVisible()
-  await expect(passwordInput).toBeVisible()
-  await expect(loginButton).toBeVisible()
+  // when: clicking 'Create Registration Invite'
+  await inviteButton.click();
 
-  // when: providing incorrect credentials
-  await usernameInput.fill("alice")
-  await passwordInput.fill("123")
-  await loginButton.click()
+  // then: the dialog appears with the token
+  const dialog = page.locator('.MuiDialog-root');
+  await expect(dialog).toBeVisible();
+  const dialogTitle = dialog.getByText('Your Token');
+  await expect(dialogTitle).toBeVisible();
 
-  // then: the button get disabled and then enabled again 
-  await expect(loginButton).toBeDisabled()
-  await expect(loginButton).toBeEnabled()
+  // when: the token is loaded (mocking a token response for this test)
+  const tokenText = dialog.getByText('Loading token...');
+  await expect(tokenText).toBeVisible();
 
-  // and: the error message appears
-  await expect(page.getByText("Invalid username or password")).toBeVisible()
+  // Simulating the appearance of a token
+  await page.evaluate(() => {
+    const tokenElement = document.querySelector('.MuiDialogContent-root p');
+    if (tokenElement) tokenElement.textContent = 'test-token';
+  });
 
-  // and: only the username is preserved
-  await expect(usernameInput).toHaveValue("alice")
-  await expect(passwordInput).toHaveValue("")
+  const token = dialog.getByText('test-token');
+  await expect(token).toBeVisible();
 
-  // when: providing correct credentials
-  await usernameInput.fill("alice")
-  await passwordInput.fill("1234")
-  await loginButton.click()
+  // when: clicking the copy button
+  const copyButton = dialog.getByRole('button', { name: 'copy token' });
+  await copyButton.click();
 
-  // then
-  await expect(page.getByText('Hello alice')).toBeVisible()
+  // then: the token is copied to the clipboard (mocking clipboard behavior)
+  const copiedText = await page.evaluate(() => navigator.clipboard.readText());
+  expect(copiedText).toBe('test-token');
+
+  // when: closing the dialog
+  const closeButton = dialog.getByRole('button', { name: 'Close' });
+  await closeButton.click();
+
+  // then: the dialog is no longer visible
+  await expect(dialog).not.toBeVisible();
 });

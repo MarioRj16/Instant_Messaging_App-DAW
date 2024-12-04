@@ -16,15 +16,10 @@ import { invite } from "../services/UsersService";
 import { InviteOutputModel } from "../models/output/InviteOutputModel";
 
 const HomePage: React.FC = () => {
-    const [isAuthenticated] = useState(true); // Mock authentication state
     const [tokenDialogOpen, setTokenDialogOpen] = useState(false);
     const [token, setToken] = useState<string>(''); // Store token in state
     const navigate = useNavigate();
 
-    if (!isAuthenticated) {
-        navigate('/login');
-        return null;
-    }
 
     const fetchToken = async () => {
         const result = await invite();
