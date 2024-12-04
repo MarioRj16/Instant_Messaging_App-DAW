@@ -1,17 +1,22 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Box, List, ListItem, ListItemText, TextField, Button } from '@mui/material';
 import SendIcon from '@mui/icons-material/Send';
-import { useParams, useLocation, Outlet } from 'react-router-dom';
+import {useParams, useLocation, Outlet, useOutletContext} from 'react-router-dom';
 import { GetMessagesListOutputModel } from '../models/output/GetMessagesListOutputModel';
 import { getMessages, listenToMessages, sendMessage } from "../services/ChannelsService";
 import { UserOutputModel } from "../models/output/UserOutputModel";
 import { me } from "../services/UsersService";
 import { MessageOutputModel } from "../models/output/MessagesOutputModel";
 
+
+type OutletContextType = {
+    eventSource: EventSource | null;
+};
+
 const ChannelPage: React.FC = () => {
     const { id } = useParams<{ id: string }>(); // Channel ID from URL
     const location = useLocation();
-
+    const { eventSource } = useOutletContext<OutletContextType>();
     const [currentUser, setCurrentUser] = useState<UserOutputModel>(); // Change this to the actual logged-in user name
     const [messages, setMessages] = useState<MessageOutputModel[]>([]); // Manage messages with state
     const [newMessage, setNewMessage] = useState(''); // Store new message input
@@ -45,38 +50,19 @@ const ChannelPage: React.FC = () => {
         fetchMessages();
     }, [id]);
 
-    // Set up EventSource for listening to new messages
+    // Listen for new messages from EventSource
     useEffect(() => {
-        if (!id) return;
-
-        // Open connection and listen for messages
-        const eventSource = listenToMessages();
-        eventSourceRef.current = eventSource;
-
-        eventSource.onopen = () => {
-            console.log('Listening to messages...');
-        };
+        if (!eventSource || !id) return;
 
         eventSource.onmessage = (event) => {
-            const newIncomingMessage = JSON.parse(event.data) as MessageOutputModel; // Parse incoming message
-            console.log('New message:', newIncomingMessage);
-            if (newIncomingMessage.channelId===Number(id)) setMessages((prevMessages) => [...prevMessages, newIncomingMessage]); // Add new message
-        };
-
-        eventSource.onerror = (error) => {
-            console.error('Error in listening for messages:', error);
-            eventSource.close(); // Close the connection on error
-        };
-
-        // Cleanup EventSource when the component unmounts or id changes
-        return () => {
-            if (eventSourceRef.current) {
-                eventSourceRef.current.close();
-                console.log('EventSource closed');
+            const newIncomingMessage = JSON.parse(event.data) as MessageOutputModel;
+            console.log('New messagerrererer:', newIncomingMessage);
+            if (newIncomingMessage.channelId === Number(id)) {
+                setMessages((prevMessages) => [...prevMessages, newIncomingMessage]);
             }
         };
 
-    }, [id]);
+    }, [id, eventSource]);
 
     // Auto-scroll to the latest message
     useEffect(() => {
