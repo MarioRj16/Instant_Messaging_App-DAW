@@ -5,14 +5,14 @@ import Navbar from './components/NavBar';
 import { GetChannelsListOutputModel } from '../models/output/GetChannelsListOutputModel';
 import {getChannels, listenToMessages} from "../services/ChannelsService";
 import {ChannelOutputModel} from "../models/output/ChannelOutputModel";
-import {MessageOutputModel} from "../models/output/MessagesOutputModel"; // Ensure you have the correct type for channels
+import {MessageOutputModel} from "../models/output/MessagesOutputModel";
+import eventBus from "./components/EventBus"; // Ensure you have the correct type for channels
 
 const YourChannels: React.FC = () => {
     const navigate = useNavigate();
     const [channels, setChannels] = useState<ChannelOutputModel[]>([]); // Assuming GetChannelsListOutputModel is the correct type
     const [loading, setLoading] = useState<boolean>(true);
     const [error, setError] = useState<string | null>(null);
-    const [eventSource, setEventSource] = useState<EventSource | null>(null);
     const [newMessagesCount, setNewMessagesCount] = useState<{ [key: number]: number }>({});
 
     // Fetch channels when component mounts
@@ -26,35 +26,49 @@ const YourChannels: React.FC = () => {
             }
         };
         const eventOnMessages = () => {
-            const eventSourceInstance = listenToMessages();
-            setEventSource(eventSourceInstance);
-            console.log("STARTED LISTENING TO MESSAGES");
-            //TODO(TRY TO IMPLEMENT TWO ONMESSAGE )
-/*
-            eventSourceInstance.onmessage = (event) => {
+            const eventSource = listenToMessages();
+
+
+            eventSource.onmessage = (event) => {
                 const newIncomingMessage = JSON.parse(event.data) as MessageOutputModel;
-                console.log('New message received:', newIncomingMessage);
+                eventBus.emit('message', newIncomingMessage);
 
-                // Update new message count for the channel
-                setNewMessagesCount((prevCount) => {
-                    const channelId = newIncomingMessage.channelId;
-                    return {
-                        ...prevCount,
-                        [channelId]: (prevCount[channelId] || 0) + 1, // Increment count for the channel
-                    };
-                });
             };
-
- */
+            return () => {
+                if (eventSource) {
+                    eventSource.close();
+                }
+            };
         };
 
         eventOnMessages();
         fetchChannels();
 
-        return () => {
-            if (eventSource) {
-                eventSource.close();
+
+    }, []);
+
+
+    useEffect(() => {
+        const handleNewMessage = (newIncomingMessage: any) => {
+
+            const channelId = newIncomingMessage.channelId;
+
+            // Check if the current URL matches the channelId
+            const currentPath = `/channels/${channelId}`;
+            if (location.pathname === currentPath) {
+                // Do nothing if the user is already on the channel page
+                return;
             }
+            setNewMessagesCount((prevCount) => ({
+                ...prevCount,
+                [channelId]: (prevCount[channelId] || 0) + 1,
+            }));
+        };
+
+        eventBus.subscribe('message', handleNewMessage);
+
+        return () => {
+            eventBus.unsubscribe('message', handleNewMessage);
         };
     }, []);
 
@@ -130,7 +144,7 @@ const YourChannels: React.FC = () => {
                         maxHeight: 'calc(100vh - 64px)', // Account for the navbar height
                     }}
                 >
-                    <Outlet context={{ eventSource }}/>
+                    <Outlet/>
                 </Box>
             </Box>
         </Box>

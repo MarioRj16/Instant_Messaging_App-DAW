@@ -7,6 +7,7 @@ import { getMessages, listenToMessages, sendMessage } from "../services/Channels
 import { UserOutputModel } from "../models/output/UserOutputModel";
 import { me } from "../services/UsersService";
 import { MessageOutputModel } from "../models/output/MessagesOutputModel";
+import eventBus from "./components/EventBus";
 
 
 type OutletContextType = {
@@ -16,14 +17,11 @@ type OutletContextType = {
 const ChannelPage: React.FC = () => {
     const { id } = useParams<{ id: string }>(); // Channel ID from URL
     const location = useLocation();
-    const { eventSource } = useOutletContext<OutletContextType>();
     const [currentUser, setCurrentUser] = useState<UserOutputModel>(); // Change this to the actual logged-in user name
     const [messages, setMessages] = useState<MessageOutputModel[]>([]); // Manage messages with state
     const [newMessage, setNewMessage] = useState(''); // Store new message input
 
     const messagesEndRef = useRef<HTMLDivElement | null>(null); // Ref for auto-scroll
-    const eventSourceRef = useRef<EventSource | null>(null); // To store the EventSource for cleanup
-
     // Fetch user and messages initially
     useEffect(() => {
         const fetchUser = async () => {
@@ -50,19 +48,19 @@ const ChannelPage: React.FC = () => {
         fetchMessages();
     }, [id]);
 
-    // Listen for new messages from EventSource
     useEffect(() => {
-        if (!eventSource || !id) return;
-
-        eventSource.onmessage = (event) => {
-            const newIncomingMessage = JSON.parse(event.data) as MessageOutputModel;
-            console.log('New messagerrererer:', newIncomingMessage);
+        const handleNewMessage = (newIncomingMessage: any) => {
             if (newIncomingMessage.channelId === Number(id)) {
                 setMessages((prevMessages) => [...prevMessages, newIncomingMessage]);
             }
         };
 
-    }, [id, eventSource]);
+        eventBus.subscribe('message', handleNewMessage);
+
+        return () => {
+            eventBus.unsubscribe('message', handleNewMessage);
+        };
+    }, [id]);
 
     // Auto-scroll to the latest message
     useEffect(() => {

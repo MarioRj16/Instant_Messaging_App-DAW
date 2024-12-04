@@ -40,18 +40,14 @@ function App() {
                 >
                     <Route
                         path=":id"
-                        element={
-                            <ProtectedRoute>
-                                <ChannelPage />
-                            </ProtectedRoute>
+                        element={//PROTECTED BECAUSE IT IS A SUBROUTE
+                            <ChannelPage />
                         }
                     >
                         <Route
                             path="settings"
-                            element={
-                                <ProtectedRoute>
-                                    <ChannelSettingsPage />
-                                </ProtectedRoute>
+                            element={//PROTECTED BECAUSE IT IS A SUBROUTE
+                                <ChannelSettingsPage />
                             }
                         />
                     </Route>
