@@ -7,38 +7,25 @@ import {
 import Navbar from "./components/NavBar";
 import {inviteMember, leaveChannel} from "../services/ChannelsService";
 import {useNavigate, useParams} from "react-router-dom";
+import {RoleModel} from "../models/RoleModel";
 
 // Mock data for channel members
 const members = [
     { id: '1', username: 'Alice', role: 'owner' },
     { id: '2', username: 'Bob', role: 'member' },
     { id: '3', username: 'Eve', role: 'viewer' },
-    { id: '1', username: 'Alice', role: 'owner' },
-    { id: '2', username: 'Bob', role: 'member' },
-    { id: '3', username: 'Eve', role: 'viewer' },
-    { id: '1', username: 'Alice', role: 'owner' },
-    { id: '2', username: 'Bob', role: 'member' },
-    { id: '3', username: 'Eve', role: 'viewer' },
-    { id: '1', username: 'Alice', role: 'owner' },
-    { id: '2', username: 'Bob', role: 'member' },
-    { id: '3', username: 'Eve', role: 'viewer' },
-    { id: '1', username: 'Alice', role: 'owner' },
-    { id: '2', username: 'Bob', role: 'member' },
-    { id: '3', username: 'Eve', role: 'viewer' },
-    { id: '1', username: 'Alice', role: 'owner' },
-    { id: '2', username: 'Bob', role: 'member' },
-    { id: '3', username: 'Eve', role: 'viewer' },
     // Add more members if needed
 ];
 
-type Role = 'owner' | 'member' | 'viewer';
 
 const ChannelSettingsPage: React.FC = () => {
     const { id } = useParams<{ id: string }>();
     const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
     const [newUsername, setNewUsername] = useState('');
-    const [newUserRole, setNewUserRole] = useState<Role>('member');
-    const currentUserRole: Role = 'owner'; // Mock current user's role
+    const [newUserRole, setNewUserRole] = useState<RoleModel>(RoleModel.member);
+
+    //TODO(GET CURRENT USER ROLE)
+    const currentUserRole: RoleModel = 'owner';
     const navigate = useNavigate();
 
     // Toggle invite dialog
@@ -52,7 +39,6 @@ const ChannelSettingsPage: React.FC = () => {
     const handleInvite = () => {
         console.log(`Inviting ${newUsername} as ${newUserRole}`);
 
-
         inviteMember(Number(id),{username: newUsername, role: newUserRole}).then()
         handleCloseInviteDialog();
     };
@@ -60,7 +46,7 @@ const ChannelSettingsPage: React.FC = () => {
     // Leave Channel functionality
     const handleLeaveChannel = () => {
         console.log("Leaving the channel...");
-        leaveChannel(Number(id)).then()
+        leaveChannel(Number(id)).then(res =>{res.contentType})
         navigate('/');
     };
 
@@ -115,15 +101,15 @@ const ChannelSettingsPage: React.FC = () => {
                     />
                     <FormControl fullWidth margin="normal" variant="outlined">
                         <InputLabel id="role-select-label">Role</InputLabel>
-                        <Select
-                            labelId="role-select-label"
-                            value={newUserRole}
-                            onChange={(e) => setNewUserRole(e.target.value as Role)}
-                            label="Role"
-                        >
-                            <MenuItem value="member">Member</MenuItem>
-                            <MenuItem value="viewer">Viewer</MenuItem>
-                        </Select>
+                            <Select
+                                labelId="role-select-label"
+                                value={newUserRole}
+                                onChange={(e) => setNewUserRole(e.target.value as RoleModel)}
+                                label="Role"
+                            >
+                                <MenuItem value={RoleModel.member}>Member</MenuItem>
+                                <MenuItem value={RoleModel.viewer}>Viewer</MenuItem>
+                            </Select>
                     </FormControl>
                 </DialogContent>
                 <DialogActions>

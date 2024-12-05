@@ -9,11 +9,6 @@ import { me } from "../services/UsersService";
 import { MessageOutputModel } from "../models/output/MessagesOutputModel";
 import eventBus from "./components/EventBus";
 
-
-type OutletContextType = {
-    eventSource: EventSource | null;
-};
-
 const ChannelPage: React.FC = () => {
     const { id } = useParams<{ id: string }>(); // Channel ID from URL
     const location = useLocation();

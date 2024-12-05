@@ -21,6 +21,11 @@ class EventBus {
         if (!this.events[event]) return;
         this.events[event].forEach((handler) => handler(data));
     }
+
+    close() {
+        this.events = {};
+    }
+
 }
 
 const eventBus = new EventBus();

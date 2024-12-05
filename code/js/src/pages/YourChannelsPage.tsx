@@ -15,36 +15,46 @@ const YourChannels: React.FC = () => {
     const [error, setError] = useState<string | null>(null);
     const [newMessagesCount, setNewMessagesCount] = useState<{ [key: number]: number }>({});
 
-    // Fetch channels when component mounts
     useEffect(() => {
+        let eventSource: EventSource | null = null;
+
         const fetchChannels = async () => {
             const response = await getChannels();
-            if(response.contentType==="application/json") {
+            if (response.contentType === "application/json") {
                 const channelsData = response.json as GetChannelsListOutputModel;
-                setChannels(channelsData.channels);  // Assuming response is an array of channels
+                setChannels(channelsData.channels); // Assuming response is an array of channels
                 setLoading(false);
             }
         };
-        const eventOnMessages = () => {
-            const eventSource = listenToMessages();
 
+        const initializeEventSource = () => {
+            eventSource = listenToMessages();
 
             eventSource.onmessage = (event) => {
                 const newIncomingMessage = JSON.parse(event.data) as MessageOutputModel;
-                eventBus.emit('message', newIncomingMessage);
-
+                eventBus.emit("message", newIncomingMessage);
+                console.log("newIncomingMessage", newIncomingMessage);
             };
-            return () => {
-                if (eventSource) {
-                    eventSource.close();
-                }
+
+            eventSource.onerror = () => {
+                console.error("EventSource encountered an error and will be closed.");
+                eventSource?.close();
             };
         };
 
-        eventOnMessages();
+        // Initialize data and EventSource
         fetchChannels();
+        initializeEventSource();
 
-
+        return () => {
+            // Cleanup: Close EventSource and clear the EventBus
+            if (eventSource) {
+                eventSource.close();
+                console.log("EventSource closed");
+            }
+            eventBus.close();
+            console.log("EventBus handlers cleared");
+        };
     }, []);
 
 

@@ -23,8 +23,8 @@ export async function getChannels() {
     return await callApi<null, GetChannelsListOutputModel>(uri, Method.GET,undefined,cookies);
 }
 
-export async function searchChannels(){
-    const uri='/channel/search';
+export async function searchChannels(channelName: string) {
+    const uri='/channel/search?channelName='+channelName;
     const cookies= getAuthToken()
     return await callApi<null, GetChannelsListOutputModel>(uri, Method.GET,undefined,cookies);
 }

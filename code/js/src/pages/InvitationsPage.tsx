@@ -11,15 +11,16 @@ import {GetChannelInvitationsListOutputModel} from "../models/output/GetChannelI
 const InvitationsPage: React.FC = () => {
     const [invitations, setInvitations] = useState<ChannelInvitationOutputModel[]>([]);
     const [loading, setLoading] = useState(true);
-    const [actionInProgress, setActionInProgress] = useState<number | null>(null);
 
     useEffect(() => {
         const fetchInvitations = async () => {
             try {
                 setLoading(true);
                 const response = await getListInvitations();
-                const data = response.json as GetChannelInvitationsListOutputModel;
-                setInvitations(data.invitations);
+                if(response.contentType === "application/json") {
+                    const data = response.json as GetChannelInvitationsListOutputModel;
+                    setInvitations(data.invitations);
+                }else setInvitations([])
             } catch (error) {
                 console.error('Failed to fetch invitations:', error);
             } finally {
@@ -31,26 +32,20 @@ const InvitationsPage: React.FC = () => {
     }, []);
 
     const handleAcceptInvite = async (id: number) => {
-        setActionInProgress(id);
         try {
             await acceptInvitation(id);
             setInvitations((prev) => prev.filter((invite) => invite.channelId !== id));
         } catch (error) {
             console.error(`Failed to accept invitation ${id}:`, error);
-        } finally {
-            setActionInProgress(null);
         }
     };
 
     const handleDeclineInvite = async (id: number) => {
-        setActionInProgress(id);
         try {
             await declineInvitation(id);
             setInvitations((prev) => prev.filter((invite) => invite.channelId !== id));
         } catch (error) {
             console.error(`Failed to decline invitation ${id}:`, error);
-        } finally {
-            setActionInProgress(null);
         }
     };
 
@@ -72,8 +67,6 @@ const InvitationsPage: React.FC = () => {
                 ) : (
                     <List sx={{ width: '80%' }}>
                         {invitations.map((invite) => {
-                            const isExpired = dayjs().isAfter(dayjs(invite.createdAt));
-
                             return (
                                 <ListItem
                                     key={invite.channelInvitationId}
