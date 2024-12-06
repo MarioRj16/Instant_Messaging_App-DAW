@@ -34,7 +34,7 @@ const InvitationsPage: React.FC = () => {
     const handleAcceptInvite = async (id: number) => {
         try {
             await acceptInvitation(id);
-            setInvitations((prev) => prev.filter((invite) => invite.channelId !== id));
+            setInvitations((prev) => prev.filter((invite) => invite.channel.channelId!== id));
         } catch (error) {
             console.error(`Failed to accept invitation ${id}:`, error);
         }
@@ -43,7 +43,7 @@ const InvitationsPage: React.FC = () => {
     const handleDeclineInvite = async (id: number) => {
         try {
             await declineInvitation(id);
-            setInvitations((prev) => prev.filter((invite) => invite.channelId !== id));
+            setInvitations((prev) => prev.filter((invite) => invite.channel.channelId !== id));
         } catch (error) {
             console.error(`Failed to decline invitation ${id}:`, error);
         }
@@ -79,14 +79,11 @@ const InvitationsPage: React.FC = () => {
                                     }}
                                 >
                                     <ListItemText
-                                        primary={`${invite.channelId} - ${invite.role}`}
+                                        primary={`${invite.channel.channelName} - ${invite.role}`}
                                         secondary={
                                             <>
                                                 <Typography variant="body2">
-                                                    <strong>Owner:</strong> {invite.inviterId}
-                                                </Typography>
-                                                <Typography variant="body2">
-                                                    <strong>Inviter:</strong> {invite.inviterId}
+                                                    <strong>Inviter:</strong> {invite.inviter.username}
                                                 </Typography>
                                                 <Typography variant="body2">
                                                     <strong>Invited :</strong> {dayjs(invite.createdAt).format('YYYY-MM-DD')}
@@ -98,7 +95,7 @@ const InvitationsPage: React.FC = () => {
                                         <Button
                                             variant="contained"
                                             color="primary"
-                                            onClick={() => handleAcceptInvite(invite.channelId)}
+                                            onClick={() => handleAcceptInvite(invite.channel.channelId)}
                                             sx={{ minWidth: '100px' }}
                                         >
                                             {'Accept'}
@@ -107,7 +104,7 @@ const InvitationsPage: React.FC = () => {
                                         <Button
                                             variant="contained"
                                             color="primary"
-                                            onClick={() => handleDeclineInvite(invite.channelId)}
+                                            onClick={() => handleDeclineInvite(invite.channel.channelId)}
                                             sx={{ minWidth: '100px' }}
                                         >
                                             { 'Decline'}

@@ -99,7 +99,7 @@ const SearchChannelsPage: React.FC = () => {
                                     primary={channel.channelName}
                                     secondary={
                                         <Typography variant="body2">
-                                            <strong>Owner:</strong> {channel.ownerId}
+                                            <strong>Owner:</strong> {channel.owner.username}
                                         </Typography>
                                     }
                                 />

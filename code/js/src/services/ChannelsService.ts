@@ -9,6 +9,7 @@ import {GetMessagesListOutputModel} from "../models/output/GetMessagesListOutput
 import {getAuthToken} from "./Utils/CookiesHandling";
 import {GetChannelInvitationsListOutputModel} from "../models/output/GetChannelInvitationsListOutputModel";
 import {MessageOutputModel} from "../models/output/MessagesOutputModel";
+import {ChannelOutputModel} from "../models/output/ChannelOutputModel";
 
 
 export async function createChannel(body: CreateChannelInputModel) {
@@ -23,6 +24,13 @@ export async function getChannels() {
     return await callApi<null, GetChannelsListOutputModel>(uri, Method.GET,undefined,cookies);
 }
 
+
+export async function getChannel(id: number) {
+    const uri=replaceParams('/channel/{id}/settings',{id:id});
+    const cookies= getAuthToken()
+    return await callApi<null, ChannelOutputModel>(uri, Method.GET,undefined,cookies);
+}
+
 export async function searchChannels(channelName: string) {
     const uri='/channel/search?channelName='+channelName;
     const cookies= getAuthToken()
@@ -34,21 +42,6 @@ export async function joinChannel(id: number) {
     const cookies= getAuthToken()
     return await callApi(uri, Method.POST,undefined,cookies);
 }
-/*
-DONT KNOW IF WE WILL WANT TO SHOW MEMBERS LIST
-export async function getChannelSettings(id:number){
-    const uri= replaceParams('/channel/{id}/settings',{id:id});
-    const cookies=getAuthToken()
-    return await callApi<null,GetChannelSettingsOutputModel>(uri, Method.GET);
-}
-
-export async function getMembers(id: number) {
-    const uri= replaceParams('/channel/{id}/members',{id:id});
-    const cookies=getAuthToken()
-    return await callApi<null,GetMembersListOutputModel>(uri, Method.GET);
-}
-
- */
 
 export async function getMessages(id: number) {
     const uri= replaceParams('/channel/{id}',{id:id});
@@ -70,15 +63,6 @@ export function listenToMessages(): EventSource {
 }
 
 
-/*
-export function listenToMessages(): EventSource {
-    const uri = 'http://localhost:8080/api/channel/listen';
-    const eventSource = new EventSource(uri);
-    return eventSource
-}
-
- */
-
 export async function sendMessage(id: number,body: SendMessageInputModel) {
     const uri= replaceParams('/channel/{id}',{id:id});
     const cookies= getAuthToken()
@@ -94,15 +78,13 @@ export async function getListInvitations(){
 export async function acceptInvitation(id: number) {
     const uri= replaceParams('/channel/invitations/{id}/accept',{id:id});
     const cookies= getAuthToken()
-    return await callApi(uri, Method.GET,undefined,cookies);
-    //TODO(CHANGE METHOD???
+    return await callApi(uri, Method.POST,undefined,cookies);
 }
 
 export async function declineInvitation(id: number) {
     const uri= replaceParams('/channel/invitations/{id}/decline',{id:id});
     const cookies= getAuthToken()
-    return await callApi(uri, Method.GET,undefined,cookies);
-    //TODO(CHANGE METHOD???
+    return await callApi(uri, Method.POST,undefined,cookies);
 }
 
 

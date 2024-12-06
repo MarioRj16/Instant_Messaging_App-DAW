@@ -6,7 +6,7 @@ import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import SettingsIcon from '@mui/icons-material/Settings';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {logout} from "../../services/UsersService";
-import {removeAuthToken} from "../../services/Utils/CookiesHandling";
+import {removeAuthToken, removeCookie} from "../../services/Utils/CookiesHandling";
 
 interface NavbarProps {
     title: string;
@@ -46,6 +46,8 @@ const Navbar: React.FC<NavbarProps> = ({ title, onBackClick, canLogout }) => {
         if (canLogout) {
            logout().then(r => {
                removeAuthToken()
+               removeCookie("username")
+               removeCookie("userId")
                navigate(`/login`)
            })
         }

@@ -154,7 +154,7 @@ const YourChannels: React.FC = () => {
                         maxHeight: 'calc(100vh - 64px)', // Account for the navbar height
                     }}
                 >
-                    <Outlet/>
+                    <Outlet />
                 </Box>
             </Box>
         </Box>

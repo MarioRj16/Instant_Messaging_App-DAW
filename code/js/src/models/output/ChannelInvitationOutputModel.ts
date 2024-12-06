@@ -1,16 +1,19 @@
+import {UserOutputModel} from "./UserOutputModel";
+import {ChannelOutputModel} from "./ChannelOutputModel";
+
 export type ChannelInvitationOutputModel = {
-    /*
-    val channelInvitationId: Int,
-    val inviterId: Int,
-    val inviteeId: Int,
-    val channelId: Int,
-    val role: String,
-    val createdAt: String,
-     */
     channelInvitationId: number,
-    inviterId: number,
+    inviter: UserOutputModel,
     inviteeId: number,
-    channelId: number,
+    channel: ChannelOutputModel,
     role: string,
     createdAt: string,
 }
+/*
+    val channelInvitationId: Int,
+    val inviter: UserOutputModel,
+    val inviteeId: Int,
+    val channel: ChannelOutputModel,
+    val role: String,
+    val createdAt: String,
+ */

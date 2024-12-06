@@ -4,19 +4,16 @@ import {
     Dialog, DialogActions, DialogContent, DialogTitle,
     TextField, FormControl, InputLabel, Select, MenuItem
 } from '@mui/material';
-import Navbar from "./components/NavBar";
-import {inviteMember, leaveChannel} from "../services/ChannelsService";
-import {useNavigate, useParams} from "react-router-dom";
-import {RoleModel} from "../models/RoleModel";
+import { inviteMember, leaveChannel } from "../services/ChannelsService";
+import { useNavigate, useOutletContext, useParams } from "react-router-dom";
+import { RoleModel } from "../models/RoleModel";
+import { MembershipOutputModel } from "../models/output/MembershipOutputModel";
+import { getCookie } from "../services/Utils/CookiesHandling";
 
-// Mock data for channel members
-const members = [
-    { id: '1', username: 'Alice', role: 'owner' },
-    { id: '2', username: 'Bob', role: 'member' },
-    { id: '3', username: 'Eve', role: 'viewer' },
-    // Add more members if needed
-];
-
+export type membersAndRole = {
+    members: MembershipOutputModel[],
+    role: RoleModel
+};
 
 const ChannelSettingsPage: React.FC = () => {
     const { id } = useParams<{ id: string }>();
@@ -24,8 +21,8 @@ const ChannelSettingsPage: React.FC = () => {
     const [newUsername, setNewUsername] = useState('');
     const [newUserRole, setNewUserRole] = useState<RoleModel>(RoleModel.member);
 
-    //TODO(GET CURRENT USER ROLE)
-    const currentUserRole: RoleModel = 'owner';
+    const userId = Number(getCookie("userId"));
+    const { members, role } = useOutletContext<membersAndRole>();
     const navigate = useNavigate();
 
     // Toggle invite dialog
@@ -39,34 +36,45 @@ const ChannelSettingsPage: React.FC = () => {
     const handleInvite = () => {
         console.log(`Inviting ${newUsername} as ${newUserRole}`);
 
-        inviteMember(Number(id),{username: newUsername, role: newUserRole}).then()
+        inviteMember(Number(id), { username: newUsername, role: newUserRole }).then();
         handleCloseInviteDialog();
     };
 
     // Leave Channel functionality
     const handleLeaveChannel = () => {
         console.log("Leaving the channel...");
-        leaveChannel(Number(id)).then(res =>{res.contentType})
+        leaveChannel(Number(id)).then(res => { res.contentType });
         navigate('/');
     };
 
     return (
         <Box display="flex" flexDirection="column" minHeight="100vh" width="100%" height="100%">
             {/* Members List */}
-
             <List sx={{ width: '100%', bgcolor: 'background.paper' }}>
                 {members.map((member) => (
-                    <ListItem key={member.id} divider>
+                    <ListItem
+                        key={member.user.userId}
+                        divider
+                        sx={{
+                            bgcolor: userId === member.user.userId ? '#4CAF50' : 'transparent',
+                            color: userId === member.user.userId ? 'white' : 'inherit',
+                        }}
+                    >
                         <ListItemText
-                            primary={member.username}
+                            primary={member.user.username}
                             secondary={`Role: ${member.role.charAt(0).toUpperCase() + member.role.slice(1)}`}
+                            sx={{
+                                '& .MuiTypography-body2': {
+                                    color: userId === member.user.userId ? 'white' : 'inherit',
+                                },
+                            }}
                         />
                     </ListItem>
                 ))}
             </List>
 
             {/* Invite Button */}
-            {currentUserRole === 'owner' && (
+            {(role === 'owner' || role === 'member') && (
                 <Button
                     variant="contained"
                     color="primary"
@@ -101,15 +109,15 @@ const ChannelSettingsPage: React.FC = () => {
                     />
                     <FormControl fullWidth margin="normal" variant="outlined">
                         <InputLabel id="role-select-label">Role</InputLabel>
-                            <Select
-                                labelId="role-select-label"
-                                value={newUserRole}
-                                onChange={(e) => setNewUserRole(e.target.value as RoleModel)}
-                                label="Role"
-                            >
-                                <MenuItem value={RoleModel.member}>Member</MenuItem>
-                                <MenuItem value={RoleModel.viewer}>Viewer</MenuItem>
-                            </Select>
+                        <Select
+                            labelId="role-select-label"
+                            value={newUserRole}
+                            onChange={(e) => setNewUserRole(e.target.value as RoleModel)}
+                            label="Role"
+                        >
+                            <MenuItem value={RoleModel.member}>Member</MenuItem>
+                            <MenuItem value={RoleModel.viewer}>Viewer</MenuItem>
+                        </Select>
                     </FormControl>
                 </DialogContent>
                 <DialogActions>

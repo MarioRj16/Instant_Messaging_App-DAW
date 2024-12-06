@@ -21,3 +21,23 @@ export function removeAuthToken() {
     document.cookie = `authToken=; ${cookieAttributes} expires=Thu, 01 Jan 1970 00:00:00 UTC;`;
 }
 
+export function setCookie (name: string, value: string) {
+    const isProduction = process.env.NODE_ENV === 'production';
+    const cookieAttributes = `path=/; SameSite=Strict; ${isProduction ? 'secure;' : ''}`;
+    document.cookie = `${name}=${value}; ${cookieAttributes}`;
+}
+
+export function getCookie(name: string): string | undefined {
+    const cookieString = document.cookie;
+    const cookies = cookieString.split('; ').reduce((acc: Record<string, string>, current) => {
+        const [cookieName, value] = current.split('=');
+        acc[cookieName] = value;
+        return acc;
+    }, {});
+    return cookies[name] || undefined;
+}
+export function removeCookie(name: string) {
+    const isProduction = process.env.NODE_ENV === 'production';
+    const cookieAttributes = `path=/; SameSite=Strict; ${isProduction ? 'secure;' : ''}`;
+    document.cookie = `${name}=; ${cookieAttributes} expires=Thu, 01 Jan 1970 00:00:00 UTC;`;
+}
