@@ -1,8 +1,10 @@
 package com.example.messagingapp.http.jackson
 
 import com.fasterxml.jackson.databind.PropertyNamingStrategy
+import com.fasterxml.jackson.databind.SerializationFeature
 import com.fasterxml.jackson.databind.cfg.MapperConfig
 import com.fasterxml.jackson.databind.introspect.AnnotatedField
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
 import org.slf4j.LoggerFactory
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
@@ -19,6 +21,8 @@ class JacksonConfig {
     fun jackson2ObjectMapperBuilder(): Jackson2ObjectMapperBuilder {
         logger.info("Configuring JacksonObjectMapperBuilder with custom property naming strategy")
         return Jackson2ObjectMapperBuilder()
+            .modulesToInstall(JavaTimeModule())
+            .featuresToDisable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS)
             .propertyNamingStrategy(
                 object : PropertyNamingStrategy() {
                     override fun nameForField(

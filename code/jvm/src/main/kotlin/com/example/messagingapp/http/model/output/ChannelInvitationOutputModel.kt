@@ -1,15 +1,21 @@
 package com.example.messagingapp.http.model.output
 
-import com.example.messagingapp.domain.InviteRole
-import com.example.messagingapp.domain.InviteStatus
+import com.example.messagingapp.domain.ChannelInvitation
 
 data class ChannelInvitationOutputModel(
     val channelInvitationId: Int,
-    val inviterId: Int,
+    val inviter: UserOutputModel,
     val inviteeId: Int,
-    val channelId: Int,
-    val role: InviteRole,
-    val createdAt: Long,
-    val expiresAt: Long,
-    val status: InviteStatus,
-)
+    val channel: ChannelOutputModel,
+    val role: String,
+    val createdAt: String,
+) {
+    constructor(invitation: ChannelInvitation) : this(
+        invitation.channelInvitationId,
+        UserOutputModel(invitation.inviter),
+        invitation.inviteeId,
+        ChannelOutputModel(invitation.channel),
+        invitation.role.role,
+        invitation.createdAt.toString(),
+    )
+}

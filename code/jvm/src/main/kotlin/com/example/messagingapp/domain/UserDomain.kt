@@ -12,14 +12,17 @@ class UserDomain(
     private val config: UserDomainConfig,
 ) {
     companion object {
-        private const val USERNAME_MIN_LENGTH = 4
-        private const val EMAIL_REGEX = "^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+.[A-Za-z]{2,}$"
-        private const val PASSWORD_REGEX = "^(?=.*[A-Za-z])(?=.*\\d)[A-Za-z\\d@\$!%*?&]{8,}\$"
+        private const val ALLOWED_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+        private const val PASSWORD_MINIMUM_LENGTH = 8
+        private const val PASSWORD_REGEX = "^(?=.*[A-Za-z])(?=.*\\d)[A-Za-z\\d@\$!%*?&]{$PASSWORD_MINIMUM_LENGTH,}\$"
+
+        // https://www.rfc-editor.org/rfc/rfc5321#section-4.5.3
+        private val USERNAME_LENGTH_RANGE = 3..64
     }
 
-    fun isValidUsername(username: String): Boolean = username.length >= USERNAME_MIN_LENGTH
+    val maxTokensPerUser: Int = config.maxTokensPerUser
 
-    fun isValidEmail(email: String): Boolean = EMAIL_REGEX.toRegex().matches(email)
+    fun isValidUsername(username: String): Boolean = username.length in USERNAME_LENGTH_RANGE
 
     fun hashPassword(password: String): Password = Password(passwordEncoder.encode(password))
 
@@ -45,21 +48,9 @@ class UserDomain(
 
     fun createToken(): Token = tokenEncoder.createToken()
 
-    val maxTokensPerUser = config.maxTokensPerUser
-
-    fun isRegistrationInvitationTimeValid(
-        clock: Clock,
-        invitation: RegistrationInvitation,
-    ): Boolean {
-        val now = clock.now()
-        return invitation.createdAt <= now &&
-            (now - invitation.createdAt) <= config.registrationInvitationTTL
+    fun createInvitationCode(): String {
+        return (1..config.invitationCodeLength)
+            .map { ALLOWED_CHARS.random() }
+            .joinToString("")
     }
-
-    fun isRegistrationInvitationValid(
-        clock: Clock,
-        invitation: RegistrationInvitation,
-    ): Boolean =
-        isRegistrationInvitationTimeValid(clock, invitation) &&
-            (invitation.invitationStatus == InviteStatus.PENDING)
 }

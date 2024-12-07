@@ -1,11 +1,11 @@
 package com.example.messagingapp.domain
 
-import java.time.LocalDateTime
+import kotlinx.datetime.Instant
 
 data class Membership(
     val membershipId: Int,
     val member: User,
-    val channel: Channel,
+    val channelId: Int,
     val role: MembershipRole,
-    val joinedAt: LocalDateTime,
+    val joinedAt: Instant,
 )

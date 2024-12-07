@@ -1,12 +1,14 @@
 package com.example.messagingapp.services
 
+import com.example.messagingapp.DEFAULT_PAGE
+import com.example.messagingapp.DEFAULT_PAGE_SIZE
 import com.example.messagingapp.domain.ChannelDomain
-import com.example.messagingapp.domain.InviteStatus
 import com.example.messagingapp.domain.MembershipRole
 import com.example.messagingapp.repository.TransactionManager
 import com.example.messagingapp.utils.failure
 import com.example.messagingapp.utils.success
 import kotlinx.datetime.Clock
+import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 
 @Service
@@ -20,263 +22,309 @@ class ChannelService(
         userId: Int,
         isPublic: Boolean,
     ): ChannelCreationResult {
-        if (!channelDomain.isValidName(channelName)) {
-            failure(ChannelCreationError.NameIsNotValid)
-        }
+        logger.info("Creating channel $channelName")
         return transactionManager.run {
-            it.usersRepository.getUserById(userId)
-                ?: return@run failure(ChannelCreationError.UserDoesNotExist)
+            if (!channelDomain.isValidName(channelName)) {
+                val error = ChannelCreationError.ChannelNameIsNotValid
+                logger.error(error.message)
+                return@run failure(error)
+            }
 
-            val channelId = it.channelsRepository.createChannel(channelName, isPublic, userId)
+            val channels = it.channelsRepository.searchChannels(userId, channelName).data
+            if (
+                channels.any { channel -> channel.channelName.lowercase() == channelName.lowercase() }
+            ) {
+                val error = ChannelCreationError.ChannelNameAlreadyExists
+                logger.error(error.message)
+                return@run failure(error)
+            }
+
+            val channelId = it.channelsRepository.createChannel(channelName, isPublic, userId, clock)
+            it.channelsRepository.createMembership(userId, channelId, clock, MembershipRole.OWNER.role)
             success(channelId)
         }
     }
 
     fun getChannel(
-        channelId: Long,
+        channelId: Int,
         userId: Int,
-    ): ChannelGetResult =
-        transactionManager.run {
-            it.usersRepository.getUserById(userId)
-                ?: return@run failure(ChannelGetError.UserDoesNotExist)
-
-            val channel =
-                it.channelsRepository.getChannel(channelId, userId)
-                    ?: return@run failure(ChannelGetError.ChannelDoesNotExist)
+    ): ChannelGetResult {
+        logger.info("Getting channel $channelId")
+        return transactionManager.run {
+            val channel = it.channelsRepository.getChannel(channelId, userId)
+            if (channel == null) {
+                val error = ChannelGetError.ChannelNotFound
+                logger.error(error.message)
+                return@run failure(error)
+            }
 
             success(channel)
         }
+    }
 
-    fun getJoinedChannels(userId: Int): GetJoinedChannelsResult =
-        transactionManager.run {
-            it.usersRepository.getUserById(userId)
-                ?: return@run failure(GetJoinedChannelsError.UserDoesNotExist)
-
-            val channels = it.channelsRepository.getJoinedChannels(userId)
-            success(channels)
-        }
-
-    // TODO(COULD ADD NAME OF THE CHANNEL TO SEARCH)
-    fun searchChannels(userId: Int): SearchChannelsResult =
-        transactionManager.run {
-            it.usersRepository.getUserById(userId)
-                ?: return@run failure(SearchChannelsError.UserDoesNotExist)
-
-            val channels = it.channelsRepository.searchChannels()
-            success(channels)
-        }
-
-    fun joinChannel(
-        channelId: Long,
+    fun listJoinedChannels(
         userId: Int,
-    ): JoinChannelResult {
+        page: Int = DEFAULT_PAGE.toInt(),
+        pageSize: Int = DEFAULT_PAGE_SIZE.toInt(),
+    ): GetJoinedChannelsResult {
+        logger.info("Getting joined channels for user $userId")
         return transactionManager.run {
-            it.usersRepository.getUserById(userId)
-                ?: return@run failure(JoinChannelError.UserDoesNotExist)
-
-            val channel =
-                it.channelsRepository.getChannel(channelId, userId)
-                    ?: return@run failure(JoinChannelError.ChannelDoesNotExist)
-
-            if (!channel.isPublic) {
-                return@run failure(JoinChannelError.ChannelIsNotPublic)
-            }
-
-            if (it.channelsRepository.getMembership(channelId, userId) != null) {
-                return@run failure(JoinChannelError.UserIsAlreadyMember)
-            }
-
-            success(it.channelsRepository.joinChannel(channelId, userId))
+            val channels = it.channelsRepository.listJoinedChannels(userId, page, pageSize)
+            success(channels)
         }
     }
 
-    fun getMessages(
-        channelId: Long,
+    fun searchChannels(
         userId: Int,
-    ): GetMessagesResult =
-        transactionManager.run {
-            it.usersRepository.getUserById(userId)
-                ?: return@run failure(GetMessagesError.UserDoesNotExist)
-
-            it.channelsRepository.getChannel(channelId, userId)
-                ?: return@run failure(GetMessagesError.ChannelDoesNotExist)
-
-            it.channelsRepository.getMembership(channelId, userId)
-                ?: return@run failure(GetMessagesError.UserIsNotMember)
-
-            val messages = it.channelsRepository.getMessages(channelId)
-            success(messages)
+        channelName: String,
+        page: Int = DEFAULT_PAGE.toInt(),
+        pageSize: Int = DEFAULT_PAGE_SIZE.toInt(),
+    ): SearchChannelsResult {
+        logger.info("Searching channels for user $userId with name $channelName")
+        return transactionManager.run {
+            val channels = it.channelsRepository.searchChannels(userId, channelName, page, pageSize)
+            success(channels)
         }
+    }
 
-    fun sendMessage(
-        channelId: Long,
+    fun joinPublicChannel(
+        channelId: Int,
         userId: Int,
-        content: String,
-    ): SendMessageResult =
-        transactionManager.run {
-            it.usersRepository.getUserById(userId)
-                ?: return@run failure(SendMessageError.UserDoesNotExist)
-
-            it.channelsRepository.getChannel(channelId, userId)
-                ?: return@run failure(SendMessageError.ChannelDoesNotExist)
-
-            val membership =
-                it.channelsRepository.getMembership(channelId, userId)
-                    ?: return@run failure(SendMessageError.UserIsNotMember)
-
-            if (membership.role == MembershipRole.VIEWER) {
-                return@run failure(SendMessageError.UserIsNotAuthorizedToWrite)
+    ): JoinChannelResult {
+        logger.info("Joining public channel $channelId")
+        return transactionManager.run {
+            val channel = it.channelsRepository.getChannel(channelId, userId)
+            if (channel == null) {
+                val error = JoinChannelError.ChannelNotFound
+                logger.error(error.message)
+                return@run failure(error)
             }
 
-            success(it.channelsRepository.sendMessage(channelId, userId, content))
+            if (!channel.isPublic) {
+                val error = JoinChannelError.ChannelIsNotPublic
+                logger.error(error.message)
+                return@run failure(error)
+            }
+
+            if (it.channelsRepository.getMembership(channelId, userId) != null) {
+                val error = JoinChannelError.UserIsAlreadyMember
+                logger.error(error.message)
+                return@run failure(error)
+            }
+
+            success(it.channelsRepository.createMembership(userId, channelId, clock, MembershipRole.MEMBER.role))
         }
+    }
 
-    fun getMembership(
-        channelId: Long,
+    fun acceptChannelInvitation(
+        channelId: Int,
         userId: Int,
-    ): GetMembershipResult =
-        transactionManager.run {
-            it.usersRepository.getUserById(userId)
-                ?: return@run failure(GetMembershipError.UserDoesNotExist)
+    ): AcceptChannelInvitationResult {
+        logger.info("Accepting channel invitation $channelId")
+        return transactionManager.run {
+            val invitation = it.channelsRepository.getInvitation(channelId, userId)
+            if (invitation == null) {
+                val error = AcceptChannelInvitationError.InvitationNotFound
+                logger.error(error.message)
+                return@run failure(error)
+            }
 
-            it.channelsRepository.getChannel(channelId, userId)
-                ?: return@run failure(GetMembershipError.ChannelDoesNotExist)
+            // We'll delete the invitation even if the user is already a member
+            it.channelsRepository.deleteInvitation(invitation.channelInvitationId)
 
-            val membership =
-                it.channelsRepository.getMembership(channelId, userId)
-                    ?: return@run failure(GetMembershipError.MembershipDoesNotExist)
+            val membership = it.channelsRepository.getMembership(channelId, userId)
+            if (membership != null) {
+                val error = AcceptChannelInvitationError.UserIsAlreadyMember
+                logger.error(error.message)
+                return@run failure(error)
+            }
 
-            success(membership)
+            it.channelsRepository.createMembership(userId, channelId, clock, invitation.role.role)
+            success(Unit)
         }
+    }
 
-    fun getMemberships(
-        channelId: Long,
+    fun declineChannelInvitation(
+        channelId: Int,
         userId: Int,
-    ): GetMembershipsResult =
-        transactionManager.run {
-            it.usersRepository.getUserById(userId)
-                ?: return@run failure(GetMembershipsError.UserDoesNotExist)
+    ): DeclineChannelInvitationResult {
+        logger.info("Declining channel invitation $channelId")
+        return transactionManager.run {
+            val invitation = it.channelsRepository.getInvitation(channelId, userId)
+            if (invitation == null) {
+                val error = DeclineChannelInvitationError.InvitationNotFound
+                logger.error(error.message)
+                return@run failure(error)
+            }
 
-            it.channelsRepository.getChannel(channelId, userId)
-                ?: return@run failure(GetMembershipsError.ChannelDoesNotExist)
+            // We'll delete the invitation even if the user is already a member
+            it.channelsRepository.deleteInvitation(invitation.channelInvitationId)
 
-            it.channelsRepository.getMembership(channelId, userId)
-                ?: return@run failure(GetMembershipsError.UserIsNotMember)
-            val memberships = it.channelsRepository.getMemberships(channelId)
+            val membership = it.channelsRepository.getMembership(channelId, userId)
+            if (membership != null) {
+                val error = DeclineChannelInvitationError.UserIsAlreadyMember
+                logger.error(error.message)
+                return@run failure(error)
+            }
 
-            success(memberships)
+            success(Unit)
         }
+    }
 
-    fun inviteMember(
-        channelId: Long,
+    fun createMessage(
+        channelId: Int,
         userId: Int,
-        invitedUsername: String,
+        content: String,
+    ): CreateMessageResult {
+        logger.info("Creating message in channel $channelId")
+        return transactionManager.run {
+            val channel = it.channelsRepository.getChannel(channelId, userId)
+            if (channel == null) {
+                val error = CreateMessageError.ChannelNotFound
+                logger.error(error.message)
+                return@run failure(error)
+            }
+
+            val membership = it.channelsRepository.getMembership(channelId, userId)
+            if (membership == null) {
+                val error = CreateMessageError.UserIsNotMember
+                logger.error(error.message)
+                return@run failure(error)
+            }
+
+            if (membership.role == MembershipRole.VIEWER) {
+                val error = CreateMessageError.UserIsNotAuthorizedToWrite
+                logger.error(error.message)
+                return@run failure(error)
+            }
+
+            success(it.channelsRepository.createMessage(channelId, userId, content, clock))
+        }
+    }
+
+    fun listMessages(
+        channelId: Int,
+        userId: Int,
+    ): GetMessagesResult {
+        logger.info("Getting messages for channel $channelId")
+        return transactionManager.run {
+            val channel = it.channelsRepository.getChannel(channelId, userId)
+            if (channel == null) {
+                val error = GetMessagesError.ChannelNotFound
+                logger.error(error.message)
+                return@run failure(error)
+            }
+
+            val membership = it.channelsRepository.getMembership(channelId, userId)
+            if (membership == null) {
+                val error = GetMessagesError.UserIsNotMember
+                logger.error(error.message)
+                return@run failure(error)
+            }
+
+            val messages = it.channelsRepository.listMessages(channelId)
+            return@run success(messages)
+        }
+    }
+
+    fun createChannelInvitation(
+        channelId: Int,
+        userId: Int,
+        inviteeUsername: String,
         role: MembershipRole,
     ): InviteMemberResult {
+        logger.info("Inviting user $inviteeUsername to channel $channelId")
         if (role == MembershipRole.OWNER) {
-            return failure(InviteMemberError.CannotMakeMemberOwner)
+            logger.error("User $userId is trying to invite a user with the role OWNER")
+            return failure(InviteMemberError.ForbiddenRole)
         }
         return transactionManager.run {
-            it.usersRepository.getUserById(userId)
-                ?: return@run failure(InviteMemberError.UserDoesNotExist)
+            val channel = it.channelsRepository.getChannel(channelId, userId)
+            if (channel == null) {
+                val error = InviteMemberError.ChannelNotFound
+                logger.error(error.message)
+                return@run failure(error)
+            }
 
-            it.channelsRepository.getChannel(channelId, userId)
-                ?: return@run failure(InviteMemberError.ChannelDoesNotExist)
+            val invitedUser = it.usersRepository.getUser(inviteeUsername)
+            if (invitedUser == null) {
+                val error = InviteMemberError.InviteeNotFound
+                logger.error(error.message)
+                return@run failure(error)
+            }
 
-            val invitedUser =
-                it.usersRepository.getUserByUsername(invitedUsername)
-                    ?: return@run failure(InviteMemberError.InviteeDoesNotExist)
-
-            val membership =
-                it.channelsRepository.getMembership(channelId, userId)
-                    ?: return@run failure(InviteMemberError.MembershipDoesNotExist)
+            val membership = it.channelsRepository.getMembership(channelId, userId)
+            if (membership == null) {
+                val error = InviteMemberError.MembershipNotFound
+                logger.error(error.message)
+                return@run failure(error)
+            }
 
             if (it.channelsRepository.getMembership(channelId, invitedUser.userId) != null) {
-                return@run failure(InviteMemberError.MembershipAlreadyExists)
+                val error = InviteMemberError.MembershipAlreadyExists
+                logger.error(error.message)
+                return@run failure(error)
             }
 
             if (!channelDomain.isHigherRole(membership.role, role)) {
-                return@run failure(InviteMemberError.CannotMakeInviteeHigherRole)
+                logger.error("User $userId is trying to invite a user with a higher role")
+                return@run failure(InviteMemberError.ForbiddenRole)
             }
 
-            /**
-             * Não adicionei esta condição porque ao fazer isto causa outro problema
-             * Se não conseguirmos criar outro invite como é que fazemos se
-             * o invite anterior der expire ou for recusado?
-             if (it.channelsRepository.getInvitation()!= null){
-             return@run failure(InviteMemberError.InviteAlreadyExists)
-             }
-             */
-            val invite = it.channelsRepository.inviteMember(channelId, userId, invitedUser.userId, role.role, channelDomain.expirationDate)
+            val invite =
+                it.channelsRepository.createChannelInvitation(
+                    channelId,
+                    userId,
+                    invitedUser.userId,
+                    role.role,
+                    clock,
+                )
             success(invite)
         }
     }
 
-    fun getInvitations(userId: Int): GetInvitationsResult =
-        transactionManager.run {
-            it.usersRepository.getUserById(userId)
-                ?: return@run failure(GetInvitationsError.UserDoesNotExist)
-
-            val invitations = it.channelsRepository.getInvitations(userId)
+    fun listInvitations(
+        userId: Int,
+        page: Int = DEFAULT_PAGE.toInt(),
+        pageSize: Int = DEFAULT_PAGE_SIZE.toInt(),
+    ): GetInvitationsResult {
+        logger.info("Getting invitations for user $userId")
+        return transactionManager.run {
+            val invitations = it.channelsRepository.listInvitations(userId, page, pageSize)
             success(invitations)
         }
+    }
 
-    fun respondInvitation(
+    fun deleteMembership(
+        channelId: Int,
         userId: Int,
-        invitationId: Long,
-        response: Boolean,
-    ): RespondInvitationResult =
-        transactionManager.run {
-            it.usersRepository.getUserById(userId)
-                ?: return@run failure(RespondInvitationError.UserDoesNotExist)
-
-            val invitation =
-                it.channelsRepository.getInvitationById(invitationId)
-                    ?: return@run failure(RespondInvitationError.InvitationDoesNotExist)
-
-            if (invitation.inviteeId != userId) {
-                return@run failure(RespondInvitationError.InvitedUserDoesNotCoincide)
+    ): DeleteMembershipResult {
+        logger.info("Deleting membership for user $userId in channel $channelId")
+        return transactionManager.run {
+            if (it.channelsRepository.getChannel(channelId, userId) == null) {
+                val error = DeleteMembershipError.ChannelNotFound
+                logger.error(error.message)
+                return@run failure(error)
             }
 
-            if (channelDomain.isExpired(invitation.expiresAt)) {
-                return@run failure(RespondInvitationError.InvitationIsExpired)
+            val membership = it.channelsRepository.getMembership(channelId, userId)
+            if (membership == null) {
+                val error = DeleteMembershipError.UserIsNotMember
+                logger.error(error.message)
+                return@run failure(error)
             }
-
-            if (invitation.status != InviteStatus.PENDING) {
-                return@run failure(RespondInvitationError.InvitationIsNotPending)
-            }
-            // PODEMOS REMOVER OS OUTROS SE DER QUISERMOS MAIS EFICIENCIA
-
-            // pnding ones
-
-            val res =
-                if (response) {
-                    it.channelsRepository.acceptInvitation(invitationId, userId, invitation.channelId, invitation.role.role)
-                } else {
-                    it.channelsRepository.declineInvitation(invitationId)
-                }
-            success(res)
-        }
-
-    fun leaveChannel(
-        channelId: Long,
-        userId: Int,
-    ): LeaveChannelResult =
-        transactionManager.run {
-            it.usersRepository.getUserById(userId)
-                ?: return@run failure(LeaveChannelError.UserDoesNotExist)
-
-            it.channelsRepository.getChannel(channelId, userId)
-                ?: return@run failure(LeaveChannelError.ChannelDoesNotExist)
-
-            val membership =
-                it.channelsRepository.getMembership(channelId, userId)
-                    ?: return@run failure(LeaveChannelError.UserIsNotMember)
 
             if (membership.role == MembershipRole.OWNER) {
-                return@run failure(LeaveChannelError.UserIsOwner)
+                val error = DeleteMembershipError.UserIsOwner
+                logger.error(error.message)
+                return@run failure(error)
             }
 
-            success(it.channelsRepository.leaveChannel(channelId, userId))
+            success(it.channelsRepository.deleteMembership(channelId, userId))
         }
+    }
+
+    companion object {
+        private val logger = LoggerFactory.getLogger(ChannelService::class.java)
+    }
 }

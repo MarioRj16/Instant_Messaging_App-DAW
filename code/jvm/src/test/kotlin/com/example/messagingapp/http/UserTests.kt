@@ -1,56 +1,53 @@
 package com.example.messagingapp.http
 
-import com.example.messagingapp.Environment
+import Uris
+import com.example.messagingapp.TestClock
+import com.example.messagingapp.bootstrapUser
+import com.example.messagingapp.clearDatabase
 import com.example.messagingapp.domain.AuthToken
 import com.example.messagingapp.domain.UUIDTokenEncoder
-import com.example.messagingapp.domain.UserDomain
-import com.example.messagingapp.domain.UserDomainConfig
-import com.example.messagingapp.generateRandomEmail
-import com.example.messagingapp.generateRandomString
-import com.example.messagingapp.repository.jdbi.JdbiTransactionManager
-import com.example.messagingapp.repository.jdbi.configureWithAppRequirements
-import kotlinx.datetime.Clock
-import org.jdbi.v3.core.Jdbi
+import com.example.messagingapp.generateInvitationCode
+import com.example.messagingapp.jdbi
+import com.example.messagingapp.transactionManager
+import com.example.messagingapp.userDomain
+import com.fasterxml.jackson.databind.ObjectMapper
+import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Test
-import org.postgresql.ds.PGSimpleDataSource
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.test.web.server.LocalServerPort
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder
 import org.springframework.test.web.reactive.server.WebTestClient
-import kotlin.time.Duration.Companion.days
-import kotlin.time.Duration.Companion.hours
-import kotlin.time.Duration.Companion.minutes
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 class UserTests {
+    @AfterEach
+    fun tearDown() {
+        clearDatabase(jdbi)
+    }
+
     // One of the very few places where we use property injection
     @LocalServerPort
     var port: Int = 0
 
+    val baseURL: String
+        get() = "http://localhost:$port"
+
     @Test
     fun `User can be created`() {
         // given: an HTTP client
-        val client = WebTestClient.bindToServer().baseUrl("http://localhost:$port/api").build()
+        val client = WebTestClient.bindToServer().baseUrl(baseURL).build()
+        val clock = TestClock()
 
         // and: an invitation
-        val inviterId = bootstrapUser()
-        val inviteeEmail = generateRandomEmail()
-        val invitationToken =
-            transactionManager.run {
-                it.usersRepository.createRegistrationInvitation(inviterId, Clock.System.now())
-            }
-        val inviteeUsername = generateRandomString()
-        val inviteePassword = "Password123@"
+        val invitationCode = generateInvitationCode(clock)
 
         // when: creating an user
         // then: the response is a 201
-        client.post().uri("/users")
+        client.post().uri(Uris.Users.REGISTER)
             .bodyValue(
                 mapOf(
-                    "username" to inviteeUsername,
-                    "password" to inviteePassword,
-                    "invitationToken" to invitationToken.value,
-                    "email" to inviteeEmail,
+                    "username" to "username",
+                    "password" to "Password123@",
+                    "invitationCode" to invitationCode,
                 ),
             )
             .exchange()
@@ -58,58 +55,26 @@ class UserTests {
 
         // when: creating a user with the same invitation token
         // then: the response is a 400
-        client.post().uri("/users")
+        client.post().uri(Uris.Users.REGISTER)
             .bodyValue(
                 mapOf(
-                    "username" to generateRandomString(),
+                    "username" to "username2",
                     "password" to "Password123@",
-                    "invitationToken" to invitationToken.value,
-                    "email" to generateRandomEmail(),
+                    "invitationCode" to invitationCode,
                 ),
             )
             .exchange()
             .expectStatus().isBadRequest
 
-        // when: creating a user with an invalid invitation token
+        // when: creating a user with an unsafe password
         // then: the response is a 400
 
-        client.post().uri("/users")
+        client.post().uri(Uris.Users.REGISTER)
             .bodyValue(
                 mapOf(
-                    "username" to generateRandomString(),
-                    "password" to "Password123@",
-                    "invitationToken" to "invalid",
-                    "email" to generateRandomEmail(),
-                ),
-            )
-            .exchange()
-            .expectStatus().isBadRequest
-
-        // when: creating a user with an invalid email
-        // then: the response is a 400
-
-        client.post().uri("/users")
-            .bodyValue(
-                mapOf(
-                    "username" to generateRandomString(),
-                    "password" to "Password123@",
-                    "email" to "invalid",
-                    "invitationToken" to invitationToken.value,
-                ),
-            )
-            .exchange()
-            .expectStatus().isBadRequest
-
-        // when: creating a user with an invalid password
-        // then: the response is a 400
-
-        client.post().uri("/users")
-            .bodyValue(
-                mapOf(
-                    "username" to generateRandomString(),
-                    "password" to "invalid",
-                    "email" to generateRandomEmail(),
-                    "invitationToken" to invitationToken.value,
+                    "username" to "username4",
+                    "password" to "unsafe",
+                    "invitationCode" to generateInvitationCode(clock),
                 ),
             )
             .exchange()
@@ -118,13 +83,12 @@ class UserTests {
         // when: creating a user with an invalid username
         // then: the response is a 400
 
-        client.post().uri("/users")
+        client.post().uri(Uris.Users.REGISTER)
             .bodyValue(
                 mapOf(
-                    "username" to "invalid",
+                    "username" to "",
                     "password" to "Password123@",
-                    "email" to generateRandomEmail(),
-                    "invitationToken" to invitationToken.value,
+                    "invitationCode" to generateInvitationCode(clock),
                 ),
             )
             .exchange()
@@ -134,23 +98,22 @@ class UserTests {
     @Test
     fun `User can login`() {
         // given: an HTTP client
-        val client = WebTestClient.bindToServer().baseUrl("http://localhost:$port/api").build()
+        val client = WebTestClient.bindToServer().baseUrl(baseURL).build()
+        val clock = TestClock()
 
         // and: a user
-        val userId = bootstrapUser()
-        val username =
-            transactionManager.run {
-                it.usersRepository.getUserById(userId)?.username ?: throw AssertionError("User not found")
-            }
+        val username = "username4"
+        val password = "Password123@"
+        bootstrapUser(username = username, password = password, testClock = clock)
 
         // when: logging in
         // then: the response is a 200
 
-        client.post().uri("/login")
+        client.post().uri(Uris.Users.LOGIN)
             .bodyValue(
                 mapOf(
                     "username" to username,
-                    "password" to "Password123@",
+                    "password" to password,
                 ),
             )
             .exchange()
@@ -159,11 +122,11 @@ class UserTests {
         // when: logging in with an invalid username
         // then: the response is a 400
 
-        client.post().uri("/login")
+        client.post().uri(Uris.Users.LOGIN)
             .bodyValue(
                 mapOf(
-                    "username" to "invalid",
-                    "password" to "Password123@",
+                    "username" to "wrong$username",
+                    "password" to password,
                 ),
             )
             .exchange()
@@ -172,7 +135,7 @@ class UserTests {
         // when: logging in with an invalid password
         // then: the response is a 400
 
-        client.post().uri("/login")
+        client.post().uri(Uris.Users.LOGIN)
             .bodyValue(
                 mapOf(
                     "username" to username,
@@ -186,14 +149,15 @@ class UserTests {
     @Test
     fun `User can logout`() {
         // given: an HTTP client
-        val client = WebTestClient.bindToServer().baseUrl("http://localhost:$port/api").build()
+        val client = WebTestClient.bindToServer().baseUrl(baseURL).build()
+        val clock = TestClock()
 
         // and: a user
-        val userId = bootstrapUser()
+        val userId = bootstrapUser(testClock = clock)
 
         val token =
             transactionManager.run {
-                val now = Clock.System.now()
+                val now = clock.now()
                 val token = AuthToken(UUIDTokenEncoder().createToken(), userId, now, now)
                 it.usersRepository.createToken(token, userDomain.maxTokensPerUser)
                 token.token.value
@@ -202,23 +166,24 @@ class UserTests {
         // when: logging out
         // then: the response is a 204
 
-        client.post().uri("/logout")
+        client.post().uri(Uris.Users.LOGOUT)
             .header("Authorization", "Bearer $token")
             .exchange()
             .expectStatus().isNoContent
     }
 
     @Test
-    fun `User can be invited`() {
+    fun `User can be invite`() {
         // given: an HTTP client
-        val client = WebTestClient.bindToServer().baseUrl("http://localhost:$port/api").build()
+        val client = WebTestClient.bindToServer().baseUrl(baseURL).build()
+        val clock = TestClock()
 
         // and: a user
-        val userId = bootstrapUser()
+        val userId = bootstrapUser(testClock = clock)
 
         val token =
             transactionManager.run {
-                val now = Clock.System.now()
+                val now = clock.now()
                 val token = AuthToken(UUIDTokenEncoder().createToken(), userId, now, now)
                 it.usersRepository.createToken(token, userDomain.maxTokensPerUser)
                 token.token.value
@@ -226,30 +191,52 @@ class UserTests {
 
         // when: inviting a user
         // then: the response is a 201
-
-        client.post().uri("/invite")
-            .header("Authorization", "Bearer $token")
-            .exchange()
-            .expectStatus().isCreated
+        val responseBody =
+            client.post().uri(Uris.Users.INVITE)
+                .header("Authorization", "Bearer $token")
+                .exchange()
+                .expectStatus().isCreated
+                .expectBody()
+                .returnResult()
+                .responseBody
 
         // when: inviting a user when not logged in
         // then: the response is a 401
-        client.post().uri("/invite")
+        client.post().uri(Uris.Users.INVITE)
             .exchange()
             .expectStatus().isUnauthorized
+
+        val objectMapper = ObjectMapper()
+        val jsonNode = objectMapper.readTree(responseBody)
+
+        val invitationCode = jsonNode.get("invitationCode").asText()
+
+        // when: registering a user with the invitation code
+        // then: the response is a 201
+        client.post().uri(Uris.Users.REGISTER)
+            .bodyValue(
+                mapOf(
+                    "username" to "username",
+                    "password" to "Password123@",
+                    "invitationCode" to invitationCode,
+                ),
+            )
+            .exchange()
+            .expectStatus().isCreated
     }
 
     @Test
     fun `User can access own profile page`() {
         // given: an HTTP client
-        val client = WebTestClient.bindToServer().baseUrl("http://localhost:$port/api").build()
+        val client = WebTestClient.bindToServer().baseUrl(baseURL).build()
+        val clock = TestClock()
 
         // and: a user
-        val userId = bootstrapUser()
+        val userId = bootstrapUser(testClock = clock)
 
         val token =
             transactionManager.run {
-                val now = Clock.System.now()
+                val now = clock.now()
                 val token = AuthToken(UUIDTokenEncoder().createToken(), userId, now, now)
                 it.usersRepository.createToken(token, userDomain.maxTokensPerUser)
                 token.token.value
@@ -258,44 +245,15 @@ class UserTests {
         // when: accessing the profile page
         // then: the response is a 200
 
-        client.get().uri("/me")
+        client.get().uri(Uris.Users.HOME)
             .header("Authorization", "Bearer $token")
             .exchange()
             .expectStatus().isOk
 
         // when: accessing the profile page when not logged in
         // then: the response is a 401
-        client.get().uri("/me")
+        client.get().uri(Uris.Users.HOME)
             .exchange()
             .expectStatus().isUnauthorized
-    }
-
-    companion object {
-        private val jdbi =
-            Jdbi
-                .create(
-                    PGSimpleDataSource().apply {
-                        setURL(Environment.getDbUrl())
-                    },
-                ).configureWithAppRequirements()
-
-        private val transactionManager = JdbiTransactionManager(jdbi)
-
-        private val userDomain =
-            UserDomain(
-                BCryptPasswordEncoder(),
-                UUIDTokenEncoder(),
-                UserDomainConfig(30.days, 30.minutes, 3, 24.hours),
-            )
-
-        private fun bootstrapUser(): Int {
-            return transactionManager.run {
-                return@run it.usersRepository.createUser(
-                    generateRandomString(),
-                    generateRandomEmail(),
-                    userDomain.hashPassword("Password123@"),
-                )
-            }
-        }
     }
 }

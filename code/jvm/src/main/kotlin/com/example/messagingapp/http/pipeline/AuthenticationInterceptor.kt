@@ -1,6 +1,7 @@
 package com.example.messagingapp.http.pipeline
 
 import com.example.messagingapp.domain.AuthenticatedUser
+import jakarta.servlet.http.Cookie
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
 import org.slf4j.LoggerFactory
@@ -22,10 +23,12 @@ class AuthenticationInterceptor(
                 it.parameterType == AuthenticatedUser::class.java
             }
         ) {
-            // enforce authentication
-            val user =
+            var user =
                 authorizationHeaderProcessor
                     .processAuthorizationHeaderValue(request.getHeader(NAME_AUTHORIZATION_HEADER))
+            if (user == null) {
+                user = getUserFromCookies(request)
+            }
             return if (user == null) {
                 response.status = 401
                 response.addHeader(NAME_WWW_AUTHENTICATE_HEADER, RequestTokenProcessor.SCHEME)
@@ -35,13 +38,23 @@ class AuthenticationInterceptor(
                 true
             }
         }
-
         return true
+    }
+
+    private fun getUserFromCookies(request: HttpServletRequest): AuthenticatedUser? {
+        val cookies: Array<Cookie>? = request.cookies
+        cookies?.forEach { cookie ->
+            if (cookie.name == COOKIE_NAME) {
+                return authorizationHeaderProcessor.processAuthorizationHeaderValue("Bearer ${cookie.value}")
+            }
+        }
+        return null
     }
 
     companion object {
         private val logger = LoggerFactory.getLogger(AuthenticationInterceptor::class.java)
         const val NAME_AUTHORIZATION_HEADER = "Authorization"
+        private const val COOKIE_NAME = "authToken"
         private const val NAME_WWW_AUTHENTICATE_HEADER = "WWW-Authenticate"
     }
 }

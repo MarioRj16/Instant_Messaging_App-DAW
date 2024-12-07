@@ -9,8 +9,7 @@ import com.example.messagingapp.http.model.input.LoginInputModel
 import com.example.messagingapp.http.model.input.UserCreateInputModel
 import com.example.messagingapp.http.model.output.LoginOutputModel
 import com.example.messagingapp.http.model.output.RegistrationInvitationCreateOutputModel
-import com.example.messagingapp.http.model.output.UserCreateOuputModel
-import com.example.messagingapp.http.model.output.UserProfileOutputModel
+import com.example.messagingapp.http.model.output.UserOutputModel
 import com.example.messagingapp.services.TokenCreationError
 import com.example.messagingapp.services.UserCreationError
 import com.example.messagingapp.services.UsersService
@@ -30,25 +29,22 @@ class UserController(
     @PostMapping(Uris.Users.REGISTER)
     fun register(
         @RequestBody input: UserCreateInputModel,
-    ): ResponseEntity<UserCreateOuputModel> {
+    ): ResponseEntity<Int> {
         return when (
             val res =
                 userService.createUser(
-                    input.invitationToken,
+                    input.invitationCode,
                     input.username,
                     input.password,
-                    input.email,
                 )
         ) {
-            is Success -> ResponseEntity(UserCreateOuputModel(res.value), HttpStatus.CREATED)
+            is Success -> ResponseEntity(res.value, HttpStatus.CREATED)
             is Failure ->
                 when (res.value) {
-                    UserCreationError.InvitationIsNotValid -> ResponseEntity(HttpStatus.BAD_REQUEST)
+                    UserCreationError.InvitationCodeNotValid -> ResponseEntity(HttpStatus.BAD_REQUEST)
                     UserCreationError.UsernameAlreadyExists -> ResponseEntity(HttpStatus.BAD_REQUEST)
-                    UserCreationError.EmailAlreadyExists -> ResponseEntity(HttpStatus.BAD_REQUEST)
                     UserCreationError.UsernameIsNotValid -> ResponseEntity(HttpStatus.BAD_REQUEST)
                     UserCreationError.PasswordIsNotSafe -> ResponseEntity(HttpStatus.BAD_REQUEST)
-                    UserCreationError.EmailIsNotValid -> ResponseEntity(HttpStatus.BAD_REQUEST)
                 }
         }
     }
@@ -56,43 +52,42 @@ class UserController(
     @PostMapping(Uris.Users.LOGIN)
     fun login(
         @RequestBody user: LoginInputModel,
-    ): ResponseEntity<LoginOutputModel> =
+    ): ResponseEntity<*> =
         when (val res = userService.createToken(user.username, user.password)) {
             is Success -> ResponseEntity(LoginOutputModel(res.value), HttpStatus.OK)
             is Failure ->
                 when (res.value) {
-                    TokenCreationError.UserOrPasswordIsInvalid -> ResponseEntity(HttpStatus.UNAUTHORIZED)
-                    TokenCreationError.UserIsNotRegistered -> ResponseEntity(HttpStatus.UNAUTHORIZED)
+                    TokenCreationError.UserOrPasswordIsInvalid -> ResponseEntity(res.value, HttpStatus.UNAUTHORIZED)
                 }
         }
 
     @PostMapping(Uris.Users.LOGOUT)
     fun logout(user: AuthenticatedUser): ResponseEntity<User> {
-        userService.revokeToken(user.token.value.toString())
-        return ResponseEntity(HttpStatus.NO_CONTENT)
+        return try {
+            userService.revokeToken(user.token.value.toString())
+            ResponseEntity(HttpStatus.NO_CONTENT)
+        } catch (e: Exception) {
+            ResponseEntity(HttpStatus.INTERNAL_SERVER_ERROR)
+        }
     }
 
     @PostMapping(Uris.Users.INVITE)
     fun invite(user: AuthenticatedUser): ResponseEntity<RegistrationInvitationCreateOutputModel> {
-        val res = userService.createRegistrationInvitation(user.user.userId)
-        return if (res is Success) {
-            ResponseEntity(
-                RegistrationInvitationCreateOutputModel(res.value.value.toString()),
-                HttpStatus.CREATED,
-            )
-        } else {
-            ResponseEntity(HttpStatus.INTERNAL_SERVER_ERROR) // TODO: Change this to a more specific error
+        return when (val res = userService.createRegistrationInvitation()) {
+            is Success ->
+                ResponseEntity(
+                    RegistrationInvitationCreateOutputModel(res.value),
+                    HttpStatus.CREATED,
+                )
+            is Failure -> ResponseEntity(HttpStatus.INTERNAL_SERVER_ERROR) // Never happens
         }
     }
 
     @GetMapping(Uris.Users.HOME)
-    fun home(user: AuthenticatedUser): ResponseEntity<UserProfileOutputModel> {
-        val body =
-            UserProfileOutputModel(
-                user.user.userId,
-                user.user.username,
-                user.user.email,
-            )
-        return ResponseEntity(body, HttpStatus.OK)
+    fun home(user: AuthenticatedUser): ResponseEntity<UserOutputModel> {
+        return ResponseEntity(
+            UserOutputModel(user.user),
+            HttpStatus.OK,
+        )
     }
 }

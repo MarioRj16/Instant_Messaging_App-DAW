@@ -1,9 +1,11 @@
 package com.example.messagingapp.domain
 
+import kotlinx.datetime.Instant
+
 data class Message(
     val messageId: Int,
-    val channel: Channel,
+    val channelId: Int,
     val sender: User,
-    val message: String,
-    val createdAt: Long,
+    val content: String,
+    val createdAt: Instant,
 )

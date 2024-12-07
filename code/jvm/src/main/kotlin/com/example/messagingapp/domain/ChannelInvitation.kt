@@ -1,20 +1,12 @@
 package com.example.messagingapp.domain
 
-import java.time.LocalDateTime
+import kotlinx.datetime.Instant
 
 data class ChannelInvitation(
     val channelInvitationId: Int,
     val inviter: User,
-    val invitee: User,
+    val inviteeId: Int,
     val channel: Channel,
     val role: InviteRole,
-    val createdAt: LocalDateTime,
-    val inviteStatus: InviteStatus,
-) {
-    val isExpired: Boolean
-        get() = createdAt.plusDays(INVITATION_EXPIRATION_DAYS).isBefore(LocalDateTime.now())
-
-    companion object {
-        const val INVITATION_EXPIRATION_DAYS = 7L
-    }
-}
+    val createdAt: Instant,
+)

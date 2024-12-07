@@ -5,24 +5,22 @@ import com.example.messagingapp.domain.Password
 import com.example.messagingapp.domain.RegistrationInvitation
 import com.example.messagingapp.domain.Token
 import com.example.messagingapp.domain.User
-import kotlinx.datetime.Instant
+import kotlinx.datetime.Clock
 
 interface UsersRepository {
-    fun getUserById(userId: Int): User?
+    fun getUser(userId: Int): User?
 
-    fun getUserByUsername(username: String): User?
+    fun getUser(username: String): User?
 
-    fun getUserByEmail(email: String): User?
-
-    fun getUserByToken(token: Token): AuthToken?
+    fun getAuthToken(token: Token): AuthToken?
 
     fun createUser(
         username: String,
-        email: String,
         password: Password,
+        invitationCode: String,
     ): Int
 
-    fun getToken(userId: Int): AuthToken?
+    fun getAuthToken(userId: Int): AuthToken?
 
     fun createToken(
         authToken: AuthToken,
@@ -34,13 +32,11 @@ interface UsersRepository {
     fun deleteToken(token: Token): Boolean
 
     fun createRegistrationInvitation(
-        inviterId: Int,
-        createdAt: Instant,
-    ): Token
+        clock: Clock,
+        invitationCode: String,
+    )
 
-    fun getRegistrationInvitation(token: Token): RegistrationInvitation?
+    fun getRegistrationInvitation(invitationCode: String): RegistrationInvitation?
 
-    fun acceptRegistrationInvitation(token: Token)
-
-    fun declineRegistrationInvitation(token: Token)
+    fun registrationInvitationIsUsed(invitationCode: String): Boolean
 }

@@ -1,25 +1,21 @@
 package com.example.messagingapp.services
 
+import com.example.messagingapp.domain.Channel
+import com.example.messagingapp.domain.ChannelInvitation
+import com.example.messagingapp.domain.Message
 import com.example.messagingapp.domain.Token
-import com.example.messagingapp.http.model.output.ChannelInvitationOutputModel
-import com.example.messagingapp.http.model.output.ChannelWithMembershipOutputModel
-import com.example.messagingapp.http.model.output.MembershipOutputModel
-import com.example.messagingapp.http.model.output.MessageOutputModel
 import com.example.messagingapp.utils.Either
+import com.example.messagingapp.utils.PaginatedResponse
 import kotlinx.datetime.Instant
 
-sealed class UserCreationError {
-    data object UsernameAlreadyExists : UserCreationError()
+sealed class UserCreationError(val message: String) {
+    data object UsernameAlreadyExists : UserCreationError("Username already exists")
 
-    data object EmailAlreadyExists : UserCreationError()
+    data object UsernameIsNotValid : UserCreationError("Username validation failed")
 
-    data object UsernameIsNotValid : UserCreationError()
+    data object InvitationCodeNotValid : UserCreationError("Invitation is not valid")
 
-    data object EmailIsNotValid : UserCreationError()
-
-    data object InvitationIsNotValid : UserCreationError()
-
-    data object PasswordIsNotSafe : UserCreationError()
+    data object PasswordIsNotSafe : UserCreationError("Password validation failed")
 }
 
 typealias UserCreationResult = Either<UserCreationError, Int>
@@ -29,154 +25,111 @@ data class TokenExternalData(
     val expiration: Instant,
 )
 
-sealed class TokenCreationError {
-    data object UserOrPasswordIsInvalid : TokenCreationError()
-
-    data object UserIsNotRegistered : TokenCreationError()
+sealed class TokenCreationError(val message: String) {
+    data object UserOrPasswordIsInvalid : TokenCreationError("Invalid username or password")
 }
+
 typealias TokenCreationResult = Either<TokenCreationError, TokenExternalData>
 
-sealed class TokenRevocationError {
-    data object TokenIsNotValid : TokenRevocationError()
+sealed class TokenRevocationError(val message: String) {
+    data object TokenIsNotValid : TokenRevocationError("Token is not valid")
 }
 typealias TokenRevocationResult = Either<TokenRevocationError, Boolean>
 
-sealed class RegistrationInvitationError {
-    data object InviteeEmailIsInvalid : RegistrationInvitationError()
+sealed class RegistrationInvitationError
 
-    data object InviterDoesNotExist : RegistrationInvitationError()
-}
+typealias RegistrationInvitationResult = Either<RegistrationInvitationError, String>
 
-typealias RegistrationInvitationResult = Either<RegistrationInvitationError, Token>
+sealed class ChannelCreationError(val message: String) {
+    data object ChannelNameIsNotValid : ChannelCreationError("Channel name is not valid")
 
-sealed class ChannelCreationError {
-    data object NameIsNotValid : ChannelCreationError()
-
-    data object UserDoesNotExist : ChannelCreationError()
+    data object ChannelNameAlreadyExists : ChannelCreationError("Channel name already exists")
 }
 
 typealias ChannelCreationResult = Either<ChannelCreationError, Int>
 
-sealed class ChannelGetError {
-    data object ChannelDoesNotExist : ChannelGetError()
-
-    data object UserDoesNotExist : ChannelGetError()
+sealed class ChannelGetError(val message: String) {
+    data object ChannelNotFound : ChannelGetError("Channel not found")
 }
 
-typealias ChannelGetResult = Either<ChannelGetError, ChannelWithMembershipOutputModel>
+typealias ChannelGetResult = Either<ChannelGetError, Channel>
 
-sealed class GetJoinedChannelsError {
-    data object UserDoesNotExist : GetJoinedChannelsError()
-}
+sealed class GetJoinedChannelsError
 
-typealias GetJoinedChannelsResult = Either<GetJoinedChannelsError, List<ChannelWithMembershipOutputModel>>
+typealias GetJoinedChannelsResult = Either<GetJoinedChannelsError, PaginatedResponse<Channel>>
 
-sealed class SearchChannelsError {
-    data object UserDoesNotExist : SearchChannelsError()
-}
+sealed class SearchChannelsError
 
-typealias SearchChannelsResult = Either<SearchChannelsError, List<ChannelWithMembershipOutputModel>>
+typealias SearchChannelsResult = Either<SearchChannelsError, PaginatedResponse<Channel>>
 
-sealed class JoinChannelError {
-    data object ChannelDoesNotExist : JoinChannelError()
+sealed class JoinChannelError(val message: String) {
+    data object ChannelNotFound : JoinChannelError("Channel not found")
 
-    data object UserDoesNotExist : JoinChannelError()
+    data object UserIsAlreadyMember : JoinChannelError("User is already a member of the channel")
 
-    data object UserIsAlreadyMember : JoinChannelError()
-
-    data object ChannelIsNotPublic : JoinChannelError()
+    data object ChannelIsNotPublic : JoinChannelError("Channel is not public")
 }
 
 typealias JoinChannelResult = Either<JoinChannelError, Unit>
 
-sealed class GetMessagesError {
-    data object ChannelDoesNotExist : GetMessagesError()
+sealed class GetMessagesError(val message: String) {
+    data object ChannelNotFound : GetMessagesError("Channel not found")
 
-    data object UserDoesNotExist : GetMessagesError()
-
-    data object UserIsNotMember : GetMessagesError()
+    data object UserIsNotMember : GetMessagesError("User is not a member of the channel")
 }
 
-typealias GetMessagesResult = Either<GetMessagesError, List<MessageOutputModel>>
+typealias GetMessagesResult = Either<GetMessagesError, List<Message>>
 
-sealed class SendMessageError {
-    data object ChannelDoesNotExist : SendMessageError()
+sealed class CreateMessageError(val message: String) {
+    data object ChannelNotFound : CreateMessageError("Channel not found")
 
-    data object UserDoesNotExist : SendMessageError()
+    data object UserIsNotAuthorizedToWrite : CreateMessageError("User is not authorized to write in the channel")
 
-    data object UserIsNotAuthorizedToWrite : SendMessageError()
-
-    data object UserIsNotMember : SendMessageError()
+    data object UserIsNotMember : CreateMessageError("User is not a member of the channel")
 }
 
-typealias SendMessageResult = Either<SendMessageError, Int>
+typealias CreateMessageResult = Either<CreateMessageError, Int>
 
-sealed class GetMembershipError {
-    data object ChannelDoesNotExist : GetMembershipError()
+sealed class AcceptChannelInvitationError(val message: String) {
+    data object UserIsAlreadyMember : AcceptChannelInvitationError("User is already a member of the channel")
 
-    data object UserDoesNotExist : GetMembershipError()
-
-    data object MembershipDoesNotExist : GetMembershipError()
+    data object InvitationNotFound : AcceptChannelInvitationError("Invitation not found for the channel")
 }
 
-typealias GetMembershipResult = Either<GetMembershipError, MembershipOutputModel>
+typealias AcceptChannelInvitationResult = Either<AcceptChannelInvitationError, Unit>
 
-sealed class GetMembershipsError {
-    data object ChannelDoesNotExist : GetMembershipsError()
+sealed class DeclineChannelInvitationError(val message: String) {
+    data object UserIsAlreadyMember : DeclineChannelInvitationError("User is already a member of the channel")
 
-    data object UserDoesNotExist : GetMembershipsError()
-
-    data object UserIsNotMember : GetMembershipsError()
+    data object InvitationNotFound : DeclineChannelInvitationError("Invitation not found for the channel")
 }
 
-typealias GetMembershipsResult = Either<GetMembershipsError, List<MembershipOutputModel>>
+typealias DeclineChannelInvitationResult = Either<DeclineChannelInvitationError, Unit>
 
-sealed class InviteMemberError {
-    data object ChannelDoesNotExist : InviteMemberError()
+sealed class InviteMemberError(val message: String) {
+    data object ChannelNotFound : InviteMemberError("Channel not found")
 
-    data object UserDoesNotExist : InviteMemberError()
+    data object InviteeNotFound : InviteMemberError("Invitee not found")
 
-    data object InviteeDoesNotExist : InviteMemberError()
+    data object MembershipNotFound : InviteMemberError("Membership not found for channel and user")
 
-    data object MembershipDoesNotExist : InviteMemberError()
+    data object MembershipAlreadyExists : InviteMemberError("Membership already exists for the invitee")
 
-    data object MembershipAlreadyExists : InviteMemberError()
-
-    data object CannotMakeMemberOwner : InviteMemberError()
-
-    data object CannotMakeInviteeHigherRole : InviteMemberError()
+    data object ForbiddenRole : InviteMemberError("User is not allowed to invite a user with a higher role")
 }
 
 typealias InviteMemberResult = Either<InviteMemberError, Int>
 
-sealed class GetInvitationsError {
-    data object UserDoesNotExist : GetInvitationsError()
+sealed class GetInvitationsError
+
+typealias GetInvitationsResult = Either<GetInvitationsError, PaginatedResponse<ChannelInvitation>>
+
+sealed class DeleteMembershipError(val message: String) {
+    data object ChannelNotFound : DeleteMembershipError("Channel not found")
+
+    data object UserIsNotMember : DeleteMembershipError("User is not a member of the channel")
+
+    data object UserIsOwner : DeleteMembershipError("User is the owner of the channel")
 }
 
-typealias GetInvitationsResult = Either<GetInvitationsError, List<ChannelInvitationOutputModel>>
-
-sealed class RespondInvitationError {
-    data object UserDoesNotExist : RespondInvitationError()
-
-    data object InvitationDoesNotExist : RespondInvitationError()
-
-    data object InvitedUserDoesNotCoincide : RespondInvitationError()
-
-    data object InvitationIsExpired : RespondInvitationError()
-
-    data object InvitationIsNotPending : RespondInvitationError()
-}
-
-typealias RespondInvitationResult = Either<RespondInvitationError, Int>
-
-sealed class LeaveChannelError {
-    data object UserDoesNotExist : LeaveChannelError()
-
-    data object ChannelDoesNotExist : LeaveChannelError()
-
-    data object UserIsNotMember : LeaveChannelError()
-
-    data object UserIsOwner : LeaveChannelError()
-}
-
-typealias LeaveChannelResult = Either<LeaveChannelError, Unit>
+typealias DeleteMembershipResult = Either<DeleteMembershipError, Unit>
