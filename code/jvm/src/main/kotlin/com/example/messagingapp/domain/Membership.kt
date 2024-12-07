@@ -4,7 +4,7 @@ import kotlinx.datetime.Instant
 
 data class Membership(
     val membershipId: Int,
-    val memberId: Int,
+    val member: User,
     val channelId: Int,
     val role: MembershipRole,
     val joinedAt: Instant,

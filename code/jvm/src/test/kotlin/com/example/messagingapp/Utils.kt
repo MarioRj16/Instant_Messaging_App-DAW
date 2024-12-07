@@ -8,12 +8,12 @@ import com.example.messagingapp.domain.UserDomain
 import com.example.messagingapp.domain.UserDomainConfig
 import com.example.messagingapp.repository.jdbi.JdbiTransactionManager
 import com.example.messagingapp.repository.jdbi.configureWithAppRequirements
-import java.util.UUID
 import kotlinx.datetime.Clock
 import org.jdbi.v3.core.Handle
 import org.jdbi.v3.core.Jdbi
 import org.postgresql.ds.PGSimpleDataSource
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder
+import java.util.UUID
 import kotlin.math.abs
 import kotlin.random.Random
 import kotlin.time.Duration.Companion.days
@@ -62,13 +62,14 @@ val transactionManager = JdbiTransactionManager(jdbi)
 
 fun runWithHandle(block: (Handle) -> Unit) = jdbi.useTransaction<Exception>(block)
 
-val userDomainConfig = UserDomainConfig(
-    tokenTTL = 30.days,
-    tokenRollingTTL = 30.minutes,
-    maxTokensPerUser = 3,
-    registrationInvitationTTL = 24.hours,
-    invitationCodeLength = 4
-)
+val userDomainConfig =
+    UserDomainConfig(
+        tokenTTL = 30.days,
+        tokenRollingTTL = 30.minutes,
+        maxTokensPerUser = 3,
+        registrationInvitationTTL = 24.hours,
+        invitationCodeLength = 4,
+    )
 
 val userDomain =
     UserDomain(
@@ -94,11 +95,10 @@ fun bootstrapUser(
         return@run it.usersRepository.createUser(
             username,
             userDomain.hashPassword(password),
-            invitationCode
+            invitationCode,
         )
     }
 }
-
 
 /**
  * Creates a channel in the database and returns its ID.
@@ -117,12 +117,13 @@ fun bootstrapChannel(
     clock: Clock = TestClock(),
 ): Int {
     return transactionManager.run {
-        val channelId = it.channelsRepository.createChannel(
-            channelName,
-            isPublic,
-            ownerId,
-            clock,
-        )
+        val channelId =
+            it.channelsRepository.createChannel(
+                channelName,
+                isPublic,
+                ownerId,
+                clock,
+            )
         it.channelsRepository.createMembership(ownerId, channelId, clock, MembershipRole.OWNER.role)
         return@run channelId
     }
@@ -155,7 +156,10 @@ fun generateInvitationCode(clock: Clock): String {
  *
  * @return The generated token.
  */
-fun generateToken(userId: Int, clock: Clock): UUID {
+fun generateToken(
+    userId: Int,
+    clock: Clock,
+): UUID {
     return transactionManager.run {
         val now = clock.now()
         val token = AuthToken(userDomain.createToken(), userId, now, now)

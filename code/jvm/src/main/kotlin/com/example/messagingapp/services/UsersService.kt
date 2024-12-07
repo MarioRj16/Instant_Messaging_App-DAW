@@ -26,29 +26,32 @@ class UsersService(
         logger.info("Creating user with username: $username")
 
         if (!usersDomain.isValidUsername(username)) {
-            logger.error("Username validation failed for: $username")
-            return failure(UserCreationError.UsernameIsNotValid)
+            val error = UserCreationError.UsernameIsNotValid
+            logger.error(error.message)
+            return failure(error)
         }
 
         if (!usersDomain.isSafePassword(password)) {
-            logger.error("Password validation failed")
-            return failure(UserCreationError.PasswordIsNotSafe)
+            val error = UserCreationError.PasswordIsNotSafe
+            logger.error(error.message)
+            return failure(error)
         }
 
         return transactionManager.run {
             if (it.usersRepository.getUser(username) != null) {
-                logger.error("Username already exists: $username")
-                return@run failure(UserCreationError.UsernameAlreadyExists)
+                val error = UserCreationError.UsernameAlreadyExists
+                logger.error(error.message)
+                return@run failure(error)
             }
-
 
             val registrationInvitation = it.usersRepository.getRegistrationInvitation(invitationCode)
             if (
                 registrationInvitation == null ||
                 it.usersRepository.registrationInvitationIsUsed(invitationCode)
             ) {
-                logger.error("Invitation is not valid: $invitationCode")
-                return@run failure(UserCreationError.InvitationCodeNotValid)
+                val error = UserCreationError.InvitationCodeNotValid
+                logger.error(error.message)
+                return@run failure(error)
             }
 
             val userId =
@@ -57,33 +60,40 @@ class UsersService(
         }
     }
 
-    fun getUserByToken(token: String): User? =
-        transactionManager.run {
+    fun getUserByToken(token: String): User? {
+        logger.info("Getting user by token: $token")
+        return transactionManager.run {
             try {
-                val tokenValue = Token(UUID.fromString(token)) // Convert token to UUID
-                val authToken = it.usersRepository.getAuthToken(tokenValue) ?: return@run null // Retrieve token or return null
+                val tokenValue = Token(UUID.fromString(token))
+                val authToken = it.usersRepository.getAuthToken(tokenValue) ?: return@run null
 
-                // Check if the token is expired
                 return@run if (usersDomain.isTokenExpired(clock, authToken)) {
-                    null // Token expired, return null
+                    logger.error("Token is expired")
+                    null
                 } else {
-                    // Token is valid, update the token and return the user
                     it.usersRepository.updateToken(tokenValue)
                     it.usersRepository.getUser(authToken.userId)
                 }
             } catch (e: IllegalArgumentException) {
-                null // Handle invalid UUID format or token parsing issues
+                logger.error("Token is not valid")
+                null
             }
         }
+    }
 
     fun createToken(
         username: String,
         password: String,
     ): TokenCreationResult {
+        logger.info("Creating token for user: $username")
         return transactionManager.run {
-            val user =
-                it.usersRepository.getUser(username)
-                    ?: return@run failure(TokenCreationError.UserOrPasswordIsInvalid)
+            val user = it.usersRepository.getUser(username)
+            if (user == null) {
+                val error = TokenCreationError.UserOrPasswordIsInvalid
+                logger.error(error.message)
+                return@run failure(error)
+            }
+
             return@run if (usersDomain.verifyPassword(password, user.password)) {
                 val token = Token(UUID.randomUUID())
                 val now = clock.now()
@@ -91,37 +101,47 @@ class UsersService(
                 it.usersRepository.createToken(authToken, usersDomain.maxTokensPerUser)
                 success(TokenExternalData(token, usersDomain.getTokenExpiration(authToken)))
             } else {
-                failure(TokenCreationError.UserOrPasswordIsInvalid)
+                val error = TokenCreationError.UserOrPasswordIsInvalid
+                logger.error(error.message)
+                failure(error)
             }
         }
     }
 
     fun revokeToken(token: String): TokenRevocationResult {
+        logger.info("Revoking token: $token")
         return transactionManager.run {
             try {
                 val tokenValue = Token(UUID.fromString(token))
                 if (it.usersRepository.deleteToken(tokenValue)) {
                     success(true)
                 } else {
-                    failure(TokenRevocationError.TokenIsNotValid)
+                    val error = TokenRevocationError.TokenIsNotValid
+                    logger.error(error.message)
+                    failure(error)
                 }
             } catch (e: IllegalArgumentException) {
-                return@run failure(TokenRevocationError.TokenIsNotValid)
+                val error = TokenRevocationError.TokenIsNotValid
+                logger.error(error.message)
+                return@run failure(error)
             }
         }
     }
 
-    fun createRegistrationInvitation(): RegistrationInvitationResult =
-        transactionManager.run {
+    fun createRegistrationInvitation(): RegistrationInvitationResult {
+        logger.info("Creating registration invitation")
+        return transactionManager.run {
             var invitationCode = usersDomain.createInvitationCode()
-            while (it.usersRepository.getRegistrationInvitation(invitationCode) != null){
+            while (it.usersRepository.getRegistrationInvitation(invitationCode) != null) {
                 // Ensure the invitation code is unique
                 invitationCode = usersDomain.createInvitationCode()
             }
 
+            logger.info("Invitation code created: $invitationCode")
             it.usersRepository.createRegistrationInvitation(clock, invitationCode)
             success(invitationCode)
         }
+    }
 
     companion object {
         private val logger = LoggerFactory.getLogger(UsersService::class.java)

@@ -17,7 +17,6 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class JdbiChannelRepositoryTests {
-
     @AfterEach
     fun tearDown() {
         clearDatabase(jdbi)
@@ -37,7 +36,7 @@ class JdbiChannelRepositoryTests {
 
             assertEquals(channelId, channel.channelId)
             assertEquals(channelName, channel.channelName)
-            assertEquals(userId, channel.ownerId)
+            assertEquals(userId, channel.owner.userId)
             assertTrue(channel.isPublic)
         }
     }
@@ -65,8 +64,8 @@ class JdbiChannelRepositoryTests {
             val channelId3 = repo.createChannel(channelName3, true, userId2, clock)
             repo.createMembership(userId2, channelId3, clock, MembershipRole.OWNER.role)
 
-            val search = repo.getJoinedChannels(userId)
-            assertEquals(2, search.size)
+            val search = repo.listJoinedChannels(userId)
+            assertEquals(2, search.totalSize)
         }
     }
 
@@ -90,15 +89,15 @@ class JdbiChannelRepositoryTests {
             channelsRepository.createMembership(userId2, channelId3, clock, MembershipRole.OWNER.role)
 
             val search = channelsRepository.searchChannels(userId, "CHANNEL")
-            assertEquals(2, search.size)
+            assertEquals(2, search.totalSize)
 
             val search2 = channelsRepository.searchChannels(userId, "channel3")
-            assertTrue(search2.isEmpty())
+            assertEquals(0, search2.totalSize)
         }
     }
 
     @Test
-    fun `Channel can be deleted`(){
+    fun `Channel can be deleted`() {
         runWithHandle {
             val repo = JdbiChannelsRepository(it)
             val userRepo = JdbiUsersRepository(it)
@@ -127,7 +126,7 @@ class JdbiChannelRepositoryTests {
             val content = "messageContent"
             repo.createMessage(channelId, userId, content, TestClock())
 
-            val messages = repo.getMessages(channelId)
+            val messages = repo.listMessages(channelId)
 
             assertEquals(1, messages.size)
             assertEquals(content, messages[0].content)
@@ -143,21 +142,20 @@ class JdbiChannelRepositoryTests {
             val channelName = "channel"
             val userId = bootstrapUser(userRepo)
 
-
             val channelId = repo.createChannel(channelName, true, userId, TestClock())
             repo.createMembership(userId, channelId, TestClock(), MembershipRole.OWNER.role)
 
             val membership = repo.getMembership(channelId, userId) ?: throw AssertionError("Membership not found")
 
             assertNotNull(membership)
-            assertEquals(userId, membership.memberId)
+            assertEquals(userId, membership.member.userId)
             assertEquals(channelId, membership.channelId)
             assertEquals(MembershipRole.OWNER, membership.role)
         }
     }
 
     @Test
-    fun `Memberships can be listed`(){
+    fun `Memberships can be listed`() {
         runWithHandle {
             val repo = JdbiChannelsRepository(it)
             val userRepo = JdbiUsersRepository(it)
@@ -173,7 +171,7 @@ class JdbiChannelRepositoryTests {
 
             val membership = repo.listMemberships(channelId)
 
-            assertEquals(2, membership.size)
+            assertEquals(2, membership.totalSize)
         }
     }
 
@@ -211,15 +209,20 @@ class JdbiChannelRepositoryTests {
 
             val channelId = repo.createChannel(channelName, true, userId, TestClock())
 
-            val invite = repo.createChannelInvitation(
-                channelId, userId, userId2, MembershipRole.MEMBER.role, TestClock()
-            )
+            val invite =
+                repo.createChannelInvitation(
+                    channelId,
+                    userId,
+                    userId2,
+                    MembershipRole.MEMBER.role,
+                    TestClock(),
+                )
 
             val invitation = repo.getInvitation(invite) ?: throw AssertionError("Invitation not found")
 
-            assertEquals(userId, invitation.inviterId)
+            assertEquals(userId, invitation.inviter.userId)
             assertEquals(userId2, invitation.inviteeId)
-            assertEquals(channelId, invitation.channelId)
+            assertEquals(channelId, invitation.channel.channelId)
         }
     }
 
@@ -233,16 +236,19 @@ class JdbiChannelRepositoryTests {
             val userId2 = bootstrapUser(userRepo)
 
             val numberOfInvitations = 3
-            repeat(numberOfInvitations){ num ->
+            repeat(numberOfInvitations) { num ->
                 val channelId = bootstrapChannel(userId, "$channelName$num")
                 repo.createChannelInvitation(
-                    channelId, userId, userId2,
-                    MembershipRole.MEMBER.role, TestClock()
+                    channelId,
+                    userId,
+                    userId2,
+                    MembershipRole.MEMBER.role,
+                    TestClock(),
                 )
             }
 
             val invitations = repo.listInvitations(userId2)
-            assertEquals(numberOfInvitations, invitations.size)
+            assertEquals(numberOfInvitations, invitations.totalSize)
         }
     }
 
@@ -256,10 +262,14 @@ class JdbiChannelRepositoryTests {
             val userId2 = bootstrapUser(userRepo)
 
             val channelId = bootstrapChannel(userId, channelName)
-            val invite = repo.createChannelInvitation(
-                channelId, userId, userId2,
-                MembershipRole.MEMBER.role, TestClock()
-            )
+            val invite =
+                repo.createChannelInvitation(
+                    channelId,
+                    userId,
+                    userId2,
+                    MembershipRole.MEMBER.role,
+                    TestClock(),
+                )
 
             val invitation = repo.getInvitation(invite) ?: throw AssertionError("Invitation not found")
 

@@ -16,7 +16,6 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class UsersServiceTests {
-
     @AfterEach
     fun tearDown() {
         clearDatabase(jdbi)
@@ -129,7 +128,7 @@ class UsersServiceTests {
     }
 
     @Test
-    fun `User cannot be created with used invitationCode`(){
+    fun `User cannot be created with used invitationCode`() {
         val testClock = TestClock()
         val userService = createUsersService(testClock)
 
@@ -218,7 +217,6 @@ class UsersServiceTests {
         val updateResult = userService.getUserByToken(token) ?: throw AssertionError("User not found")
         assertEquals(updateResult.userId, userId)
 
-
         val updatedToken =
             transactionManager.run {
                 it.usersRepository.getAuthToken(userId)?.token?.value.toString()
@@ -281,12 +279,11 @@ class UsersServiceTests {
     }
 
     companion object {
-        private fun createUsersService(
-            testClock: TestClock,
-        ) = UsersService(
-            transactionManager,
-            userDomain,
-            testClock,
-        )
+        private fun createUsersService(testClock: TestClock) =
+            UsersService(
+                transactionManager,
+                userDomain,
+                testClock,
+            )
     }
 }

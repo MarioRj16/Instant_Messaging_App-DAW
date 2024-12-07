@@ -1,8 +1,6 @@
 object Uris {
     const val PREFIX = "/api"
 
-    const val HOME = "/"
-
     object Users {
         const val REGISTER = "$PREFIX/users"
         const val LOGIN = "$PREFIX/login"
@@ -13,7 +11,7 @@ object Uris {
 
     object Channels {
         const val CREATE = "$PREFIX/channel"
-        const val GET_JOINED_CHANNELS = "$PREFIX/channel"
+        const val LIST_JOINED_CHANNELS = "$PREFIX/channel"
         const val SEARCH_CHANNELS = "$PREFIX/channel/search"
         const val JOIN_CHANNEL = "$PREFIX/channel/{id}/join"
         const val GET_BY_ID = "$PREFIX/channel/{id}/settings"
@@ -24,5 +22,6 @@ object Uris {
         const val DECLINE_INVITATION = "$PREFIX/channel/invitations/{id}/decline"
         const val INVITE_MEMBER = "$PREFIX/channel/{id}/memberships"
         const val LEAVE_CHANNEL = "$PREFIX/channel/{id}/memberships"
+        const val LISTEN_CHANNELS = "$PREFIX/channel/listen"
     }
 }

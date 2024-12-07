@@ -11,18 +11,18 @@ import com.example.messagingapp.jdbi
 import com.example.messagingapp.runWithHandle
 import com.example.messagingapp.userDomain
 import com.example.messagingapp.userDomainConfig
-import java.util.UUID
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Test
+import java.util.UUID
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
 class JdbiUserRepositoryTests {
     @AfterEach
-    fun tearDown(): Unit {
+    fun tearDown() {
         clearDatabase(jdbi)
     }
 
@@ -65,8 +65,6 @@ class JdbiUserRepositoryTests {
             assertEquals(password, account.password)
         }
     }
-
-
 
     @Test
     fun `AuthToken can be retrieved by token`() {

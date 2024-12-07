@@ -4,18 +4,18 @@ import com.example.messagingapp.domain.ChannelInvitation
 
 data class ChannelInvitationOutputModel(
     val channelInvitationId: Int,
-    val inviterId: Int,
+    val inviter: UserOutputModel,
     val inviteeId: Int,
-    val channelId: Int,
+    val channel: ChannelOutputModel,
     val role: String,
     val createdAt: String,
-){
-    constructor(invitation: ChannelInvitation): this(
+) {
+    constructor(invitation: ChannelInvitation) : this(
         invitation.channelInvitationId,
-        invitation.inviterId,
+        UserOutputModel(invitation.inviter),
         invitation.inviteeId,
-        invitation.channelId,
+        ChannelOutputModel(invitation.channel),
         invitation.role.role,
-        invitation.createdAt.toString()
+        invitation.createdAt.toString(),
     )
 }

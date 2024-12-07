@@ -4,8 +4,8 @@ import com.example.messagingapp.domain.Channel
 import com.example.messagingapp.domain.ChannelInvitation
 import com.example.messagingapp.domain.Membership
 import com.example.messagingapp.domain.Message
-import com.example.messagingapp.domain.User
 import com.example.messagingapp.repository.ChannelsRepository
+import com.example.messagingapp.utils.PaginatedResponse
 import kotlinx.datetime.Clock
 import org.jdbi.v3.core.Handle
 import org.jdbi.v3.core.kotlin.mapTo
@@ -13,7 +13,6 @@ import org.jdbi.v3.core.kotlin.mapTo
 class JdbiChannelsRepository(
     private val handle: Handle,
 ) : ChannelsRepository {
-
     override fun createChannel(
         channelName: String,
         isPublic: Boolean,
@@ -42,69 +41,132 @@ class JdbiChannelsRepository(
         channelId: Int,
         userId: Int,
     ): Channel? {
-        val channel = handle
-            .createQuery(
-                """
+        val channel =
+            handle
+                .createQuery(
+                    """
                 SELECT *
                 FROM channel c
                 LEFT JOIN membership m ON c.channel_id = m.channel_id AND m.member_id = :userId
+                JOIN users u ON c.owner_id = u.user_id
                 WHERE c.channel_id = :channelId
                 """,
-            )
-            .bind("channelId", channelId)
-            .bind("userId", userId)
-            .mapTo<Channel>()
-            .singleOrNull() ?: return null
+                )
+                .bind("channelId", channelId)
+                .bind("userId", userId)
+                .mapTo<Channel>()
+                .singleOrNull() ?: return null
 
         val members = listChannelMembers(listOf(channelId))
         return channel.copy(members = members[channelId] ?: emptyList())
     }
 
-    override fun getJoinedChannels(userId: Int): List<Channel> {
-        val channels = handle
-            .createQuery(
-                """
-                SELECT *
+    override fun listJoinedChannels(
+        userId: Int,
+        page: Int,
+        pageSize: Int,
+    ): PaginatedResponse<Channel> {
+        val offset = calculateOffset(page, pageSize)
+        val totalCount =
+            handle
+                .createQuery(
+                    """
+                SELECT COUNT(*) 
                 FROM channel c
                 JOIN membership m ON c.channel_id = m.channel_id
                 WHERE m.member_id = :userId
-        """,
-            )
-            .bind("userId", userId)
-            .mapTo<Channel>()
-            .list()
+                """,
+                )
+                .bind("userId", userId)
+                .mapTo<Int>()
+                .one()
 
-        val members = listChannelMembers(channels.map { it.channelId })
-        return channels.map { c -> c.copy(members = members[c.channelId] ?: emptyList()) }
-    }
-
-    override fun searchChannels(userId: Int, name: String): List<Channel> {
-        val channel = handle
-            .createQuery(
-                """
+        var channels =
+            handle
+                .createQuery(
+                    """
                 SELECT *
                 FROM channel c
-                LEFT JOIN membership m ON c.channel_id = m.channel_id
-                WHERE c.channel_name ILIKE :name 
-                AND (c.is_public = TRUE OR m.member_id = :userId)
+                JOIN membership m ON c.channel_id = m.channel_id
+                JOIN users u ON c.owner_id = u.user_id
+                WHERE m.member_id = :userId
+                LIMIT :pageSize OFFSET :offset
                 """,
-            )
-            .bind("name", "$name%")
-            .bind("userId", userId)
-            .mapTo<Channel>()
-            .list()
-        val members = listChannelMembers(channel.map { it.channelId })
-        return channel.map { c -> c.copy(members = members[c.channelId] ?: emptyList()) }
+                )
+                .bind("userId", userId)
+                .bind("pageSize", pageSize)
+                .bind("offset", offset)
+                .mapTo<Channel>()
+                .list()
+
+        val totalPages = calculateTotalPages(totalCount, pageSize)
+        val channelIds = channels.map { it.channelId }
+        val members = listChannelMembers(channelIds)
+        channels = channels.map { c -> c.copy(members = members[c.channelId] ?: emptyList()) }
+        return PaginatedResponse(channels, page, totalPages, totalCount)
     }
 
-    override fun deleteChannel(channelId: Int){
+    override fun searchChannels(
+        userId: Int,
+        name: String,
+        page: Int,
+        pageSize: Int,
+    ): PaginatedResponse<Channel> {
+        val offset = calculateOffset(page, pageSize)
+
+        val totalCount =
+            handle
+                .createQuery(
+                    """
+            SELECT COUNT(*) 
+            FROM channel c
+            LEFT JOIN membership m ON c.channel_id = m.channel_id
+            JOIN users u ON c.owner_id = u.user_id
+            WHERE c.channel_name ILIKE :name 
+            AND (c.is_public = TRUE OR m.member_id = :userId)
+            """,
+                )
+                .bind("name", "$name%")
+                .bind("userId", userId)
+                .mapTo<Int>()
+                .one()
+
+        var channels =
+            handle
+                .createQuery(
+                    """
+            SELECT *
+            FROM channel c
+            LEFT JOIN membership m ON c.channel_id = m.channel_id
+            JOIN users u ON c.owner_id = u.user_id
+            WHERE c.channel_name ILIKE :name 
+            AND (c.is_public = TRUE OR m.member_id = :userId)
+            LIMIT :pageSize OFFSET :offset
+            """,
+                )
+                .bind("name", "$name%")
+                .bind("userId", userId)
+                .bind("pageSize", pageSize)
+                .bind("offset", offset)
+                .mapTo<Channel>()
+                .list()
+
+        val totalPages = calculateTotalPages(totalCount, pageSize)
+        val channelIds = channels.map { it.channelId }
+        val members = listChannelMembers(channelIds)
+        channels = channels.map { c -> c.copy(members = members[c.channelId] ?: emptyList()) }
+
+        return PaginatedResponse(channels, page, totalPages, totalCount)
+    }
+
+    override fun deleteChannel(channelId: Int) {
         handle
             .createUpdate("DELETE FROM channel WHERE channel_id = :channelId")
             .bind("channelId", channelId)
             .execute()
     }
 
-    override fun getMessages(channelId: Int): List<Message> =
+    override fun listMessages(channelId: Int): List<Message> =
         handle
             .createQuery(
                 """
@@ -141,18 +203,59 @@ class JdbiChannelsRepository(
         userId: Int,
     ): Membership? =
         handle
-            .createQuery("SELECT * FROM membership WHERE channel_id = :channelId AND member_id = :userId")
+            .createQuery(
+                """
+                SELECT * 
+                FROM membership 
+                JOIN users u ON member_id = u.user_id
+                WHERE channel_id = :channelId AND member_id = :userId
+                """,
+            )
             .bind("channelId", channelId)
             .bind("userId", userId)
             .mapTo<Membership>()
             .singleOrNull()
 
-    override fun listMemberships(channelId: Int): List<Membership> =
-        handle
-            .createQuery("SELECT * FROM membership WHERE channel_id = :channelId")
-            .bind("channelId", channelId)
-            .mapTo<Membership>()
-            .list()
+    override fun listMemberships(
+        channelId: Int,
+        page: Int,
+        pageSize: Int,
+    ): PaginatedResponse<Membership> {
+        val offset = calculateOffset(page, pageSize)
+        val totalCount =
+            handle
+                .createQuery(
+                    """
+                SELECT COUNT(*) 
+                FROM membership m
+                JOIN users u ON m.member_id = u.user_id
+                WHERE m.channel_id = :channelId
+                """,
+                )
+                .bind("channelId", channelId)
+                .mapTo<Int>()
+                .one()
+
+        val memberships =
+            handle
+                .createQuery(
+                    """
+                SELECT *
+                FROM membership m
+                JOIN users u ON m.member_id = u.user_id
+                WHERE m.channel_id = :channelId
+                LIMIT :pageSize OFFSET :offset
+                """,
+                )
+                .bind("channelId", channelId)
+                .bind("pageSize", pageSize)
+                .bind("offset", offset)
+                .mapTo<Membership>()
+                .list()
+
+        val totalPages = calculateTotalPages(totalCount, pageSize)
+        return PaginatedResponse(memberships, page, totalPages, totalCount)
+    }
 
     override fun createChannelInvitation(
         channelId: Int,
@@ -175,29 +278,75 @@ class JdbiChannelsRepository(
             .mapTo<Int>()
             .one()
 
-    override fun listInvitations(userId: Int): List<ChannelInvitation> =
-        handle
-            .createQuery(
-                "SELECT * FROM channel_invitation WHERE invitee_id = :userId",
-            )
-            .bind("userId", userId)
-            .mapTo<ChannelInvitation>()
-            .list()
+    override fun listInvitations(
+        userId: Int,
+        page: Int,
+        pageSize: Int,
+    ): PaginatedResponse<ChannelInvitation> {
+        val offset = calculateOffset(page, pageSize)
+
+        val totalCount =
+            handle
+                .createQuery(
+                    """
+                SELECT COUNT(*) 
+                FROM channel_invitation ci 
+                WHERE ci.invitee_id = :userId
+                """,
+                )
+                .bind("userId", userId)
+                .mapTo<Int>()
+                .one()
+
+        val invitations =
+            handle
+                .createQuery(
+                    """
+                SELECT *
+                FROM channel_invitation ci 
+                JOIN users u ON ci.inviter_id = u.user_id
+                JOIN channel c ON ci.channel_id = c.channel_id
+                WHERE ci.invitee_id = :userId
+                LIMIT :pageSize OFFSET :offset
+                """,
+                )
+                .bind("userId", userId)
+                .bind("pageSize", pageSize)
+                .bind("offset", offset)
+                .mapTo<ChannelInvitation>()
+                .list()
+
+        val totalPages = calculateTotalPages(totalCount, pageSize)
+        return PaginatedResponse(invitations, page, totalPages, totalCount)
+    }
 
     override fun getInvitation(invitationId: Int): ChannelInvitation? =
         handle
-            .createQuery("SELECT * FROM channel_invitation WHERE channel_invitation_id = :invitationId")
+            .createQuery(
+                """
+                SELECT * 
+                FROM channel_invitation ci 
+                JOIN users u ON ci.inviter_id = u.user_id
+                JOIN channel c ON ci.channel_id = c.channel_id
+                WHERE ci.channel_invitation_id = :invitationId
+                """,
+            )
             .bind("invitationId", invitationId)
             .mapTo<ChannelInvitation>()
             .singleOrNull()
 
-    override fun getInvitation(channelId: Int, userId: Int): ChannelInvitation? =
+    override fun getInvitation(
+        channelId: Int,
+        userId: Int,
+    ): ChannelInvitation? =
         handle
             .createQuery(
                 """
                 SELECT *
-                FROM channel_invitation
-                WHERE channel_id = :channelId AND invitee_id = :userId
+                FROM channel_invitation ci
+                JOIN users u ON ci.inviter_id = u.user_id
+                JOIN channel c ON ci.channel_id = c.channel_id
+                WHERE ci.channel_id = :channelId AND ci.invitee_id = :userId
                 """,
             )
             .bind("channelId", channelId)
@@ -241,8 +390,8 @@ class JdbiChannelsRepository(
             .execute()
     }
 
-    private fun listChannelMembers(channelIds: List<Int>): Map<Int, List<User>> {
-        return if (channelIds.isEmpty()){
+    private fun listChannelMembers(channelIds: List<Int>): Map<Int, List<Membership>> =
+        if (channelIds.isEmpty()) {
             emptyMap()
         } else {
             handle
@@ -257,11 +406,20 @@ class JdbiChannelsRepository(
                 .bindList("channelIds", channelIds)
                 .map { rs, ctx ->
                     val channelId = rs.getInt("channel_id")
-                    val user = ctx.findRowMapperFor(User::class.java).get().map(rs, ctx)
-                    channelId to user
+                    val member = ctx.findRowMapperFor(Membership::class.java).get().map(rs, ctx)
+                    channelId to member
                 }
                 .groupBy { it.first }
                 .mapValues { it.value.map { (_, user) -> user } }
         }
-    }
+
+    private fun calculateOffset(
+        page: Int,
+        pageSize: Int,
+    ): Int = (page - 1) * pageSize
+
+    private fun calculateTotalPages(
+        totalCount: Int,
+        pageSize: Int,
+    ): Int = (totalCount + pageSize - 1) / pageSize
 }

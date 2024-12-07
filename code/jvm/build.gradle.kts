@@ -60,7 +60,7 @@ tasks.withType<Test> {
 }
 
 task<Exec>("startDB") {
-    commandLine("docker", "compose", "up", "-d", "--build", "--force-recreate", "db-postgres")
+    commandLine("docker", "compose", "up", "-d", "db-postgres")
 }
 
 task<Exec>("waitForDB") {

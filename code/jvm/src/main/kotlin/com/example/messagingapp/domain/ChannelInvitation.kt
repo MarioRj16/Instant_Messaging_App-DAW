@@ -4,9 +4,9 @@ import kotlinx.datetime.Instant
 
 data class ChannelInvitation(
     val channelInvitationId: Int,
-    val inviterId: Int,
+    val inviter: User,
     val inviteeId: Int,
-    val channelId: Int,
+    val channel: Channel,
     val role: InviteRole,
     val createdAt: Instant,
 )

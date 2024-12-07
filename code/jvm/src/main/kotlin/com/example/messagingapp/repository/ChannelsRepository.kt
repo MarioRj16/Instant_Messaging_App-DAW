@@ -1,9 +1,12 @@
 package com.example.messagingapp.repository
 
+import com.example.messagingapp.DEFAULT_PAGE
+import com.example.messagingapp.DEFAULT_PAGE_SIZE
 import com.example.messagingapp.domain.Channel
 import com.example.messagingapp.domain.ChannelInvitation
 import com.example.messagingapp.domain.Membership
 import com.example.messagingapp.domain.Message
+import com.example.messagingapp.utils.PaginatedResponse
 import kotlinx.datetime.Clock
 
 interface ChannelsRepository {
@@ -19,13 +22,22 @@ interface ChannelsRepository {
         userId: Int,
     ): Channel?
 
-    fun getJoinedChannels(userId: Int): List<Channel>
+    fun listJoinedChannels(
+        userId: Int,
+        page: Int = DEFAULT_PAGE.toInt(),
+        pageSize: Int = DEFAULT_PAGE_SIZE.toInt(),
+    ): PaginatedResponse<Channel>
 
-    fun searchChannels(userId: Int, name: String = ""): List<Channel>
+    fun searchChannels(
+        userId: Int,
+        name: String = "",
+        page: Int = DEFAULT_PAGE.toInt(),
+        pageSize: Int = DEFAULT_PAGE_SIZE.toInt(),
+    ): PaginatedResponse<Channel>
 
     fun deleteChannel(channelId: Int)
 
-    fun getMessages(channelId: Int): List<Message>
+    fun listMessages(channelId: Int): List<Message>
 
     fun createMessage(
         channelId: Int,
@@ -39,7 +51,11 @@ interface ChannelsRepository {
         userId: Int,
     ): Membership?
 
-    fun listMemberships(channelId: Int): List<Membership>
+    fun listMemberships(
+        channelId: Int,
+        page: Int = DEFAULT_PAGE.toInt(),
+        pageSize: Int = DEFAULT_PAGE_SIZE.toInt(),
+    ): PaginatedResponse<Membership>
 
     fun createChannelInvitation(
         channelId: Int,
@@ -49,11 +65,18 @@ interface ChannelsRepository {
         clock: Clock,
     ): Int
 
-    fun listInvitations(userId: Int): List<ChannelInvitation>
+    fun listInvitations(
+        userId: Int,
+        page: Int = DEFAULT_PAGE.toInt(),
+        pageSize: Int = DEFAULT_PAGE_SIZE.toInt(),
+    ): PaginatedResponse<ChannelInvitation>
 
     fun getInvitation(invitationId: Int): ChannelInvitation?
 
-    fun getInvitation(channelId: Int, userId: Int): ChannelInvitation?
+    fun getInvitation(
+        channelId: Int,
+        userId: Int,
+    ): ChannelInvitation?
 
     fun deleteInvitation(invitationId: Int)
 

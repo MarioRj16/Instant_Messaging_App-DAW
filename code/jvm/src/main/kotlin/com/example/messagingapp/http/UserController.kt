@@ -74,10 +74,11 @@ class UserController(
     @PostMapping(Uris.Users.INVITE)
     fun invite(user: AuthenticatedUser): ResponseEntity<RegistrationInvitationCreateOutputModel> {
         return when (val res = userService.createRegistrationInvitation()) {
-            is Success -> ResponseEntity(
-                RegistrationInvitationCreateOutputModel(res.value),
-                HttpStatus.CREATED,
-            )
+            is Success ->
+                ResponseEntity(
+                    RegistrationInvitationCreateOutputModel(res.value),
+                    HttpStatus.CREATED,
+                )
             is Failure -> ResponseEntity(HttpStatus.INTERNAL_SERVER_ERROR) // Never happens
         }
     }
@@ -85,7 +86,8 @@ class UserController(
     @GetMapping(Uris.Users.HOME)
     fun home(user: AuthenticatedUser): ResponseEntity<UserOutputModel> {
         return ResponseEntity(
-            UserOutputModel(user.user), HttpStatus.OK
+            UserOutputModel(user.user),
+            HttpStatus.OK,
         )
     }
 }

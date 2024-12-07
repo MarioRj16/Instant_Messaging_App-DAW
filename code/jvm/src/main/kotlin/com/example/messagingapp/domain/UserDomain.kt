@@ -22,8 +22,7 @@ class UserDomain(
 
     val maxTokensPerUser: Int = config.maxTokensPerUser
 
-    fun isValidUsername(username: String): Boolean =
-        username.length in USERNAME_LENGTH_RANGE
+    fun isValidUsername(username: String): Boolean = username.length in USERNAME_LENGTH_RANGE
 
     fun hashPassword(password: String): Password = Password(passwordEncoder.encode(password))
 

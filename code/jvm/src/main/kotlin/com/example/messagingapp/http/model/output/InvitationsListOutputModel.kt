@@ -1,10 +1,10 @@
 package com.example.messagingapp.http.model.output
 
-import com.example.messagingapp.domain.Channel
+import com.example.messagingapp.domain.ChannelInvitation
 import com.example.messagingapp.utils.PaginatedResponse
 
-class ChannelListOutputModel(
-    val channels: List<ChannelOutputModel>,
+class InvitationsListOutputModel(
+    val invitations: List<ChannelInvitationOutputModel>,
     val pageSize: Int,
     val page: Int,
     val totalPages: Int,
@@ -14,8 +14,8 @@ class ChannelListOutputModel(
     val previousPage: Int?,
     val nextPage: Int?,
 ) {
-    constructor(response: PaginatedResponse<Channel>) : this(
-        response.data.map { ChannelOutputModel(it) },
+    constructor(response: PaginatedResponse<ChannelInvitation>) : this(
+        response.data.map { ChannelInvitationOutputModel(it) },
         response.pageSize,
         response.page,
         response.totalPages,

@@ -9,8 +9,8 @@ class ChannelDomain {
     }
 
     fun isValidName(channelName: String): Boolean =
-            channelName.length in CHANNEL_NAME_LENGTH_RANGE &&
-                channelName.all { it.isLetterOrDigit() }
+        channelName.length in CHANNEL_NAME_LENGTH_RANGE &&
+            channelName.all { it.isLetterOrDigit() }
 
     fun isHigherRole(
         inviterRole: MembershipRole,

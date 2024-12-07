@@ -191,13 +191,14 @@ class UserTests {
 
         // when: inviting a user
         // then: the response is a 201
-        val responseBody = client.post().uri(Uris.Users.INVITE)
-            .header("Authorization", "Bearer $token")
-            .exchange()
-            .expectStatus().isCreated
-            .expectBody()
-            .returnResult()
-            .responseBody
+        val responseBody =
+            client.post().uri(Uris.Users.INVITE)
+                .header("Authorization", "Bearer $token")
+                .exchange()
+                .expectStatus().isCreated
+                .expectBody()
+                .returnResult()
+                .responseBody
 
         // when: inviting a user when not logged in
         // then: the response is a 401

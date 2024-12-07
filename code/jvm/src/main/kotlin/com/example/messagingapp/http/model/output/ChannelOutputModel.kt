@@ -5,15 +5,17 @@ import com.example.messagingapp.domain.Channel
 data class ChannelOutputModel(
     val channelId: Int,
     val channelName: String,
-    val ownerId: Int,
+    val owner: UserOutputModel,
     val createdAt: String,
     val isPublic: Boolean,
+    val members: MembershipListOutputModel,
 ) {
-    constructor(channel: Channel): this(
+    constructor(channel: Channel) : this(
         channel.channelId,
         channel.channelName,
-        channel.ownerId,
+        UserOutputModel(channel.owner),
         channel.createdAt.toString(),
-        channel.isPublic
+        channel.isPublic,
+        MembershipListOutputModel(channel.members),
     )
 }

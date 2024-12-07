@@ -8,12 +8,12 @@ data class MessageOutputModel(
     val channelId: Int,
     val content: String,
     val createdAt: String,
-){
-    constructor(message: Message): this(
+) {
+    constructor(message: Message) : this(
         messageId = message.messageId,
         senderInfo = UserOutputModel(message.sender),
         channelId = message.channelId,
         content = message.content,
-        createdAt = message.createdAt.toString()
+        createdAt = message.createdAt.toString(),
     )
 }

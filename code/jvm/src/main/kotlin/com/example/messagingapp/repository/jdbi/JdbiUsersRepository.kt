@@ -10,7 +10,6 @@ import kotlinx.datetime.Clock
 import org.jdbi.v3.core.Handle
 import org.jdbi.v3.core.kotlin.mapTo
 import org.slf4j.LoggerFactory
-import java.util.UUID
 
 class JdbiUsersRepository(
     private val handle: Handle,

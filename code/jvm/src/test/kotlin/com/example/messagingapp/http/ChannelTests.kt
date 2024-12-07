@@ -1,5 +1,6 @@
 package com.example.messagingapp.http
 
+import Uris
 import com.example.messagingapp.TestClock
 import com.example.messagingapp.bootstrapChannel
 import com.example.messagingapp.bootstrapUser
@@ -20,7 +21,7 @@ import kotlin.test.assertNotNull
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 class ChannelTests {
     @AfterEach
-    fun tearDown(): Unit {
+    fun tearDown() {
         clearDatabase(jdbi)
     }
 
@@ -31,7 +32,7 @@ class ChannelTests {
         get() = "http://localhost:$port"
 
     @Test
-    fun `Channel can be created`(){
+    fun `Channel can be created`() {
         val client = WebTestClient.bindToServer().baseUrl(baseURL).build()
         val clock = TestClock()
         val userId = bootstrapUser(testClock = clock)
@@ -91,7 +92,7 @@ class ChannelTests {
     }
 
     @Test
-    fun `Channel can be retrieved`(){
+    fun `Channel can be retrieved`() {
         val client = WebTestClient.bindToServer().baseUrl(baseURL).build()
         val clock = TestClock()
         val userId = bootstrapUser(testClock = clock)
@@ -122,7 +123,7 @@ class ChannelTests {
     }
 
     @Test
-    fun `Joined channels can be retrieved`(){
+    fun `Joined channels can be retrieved`() {
         val client = WebTestClient.bindToServer().baseUrl(baseURL).build()
         val clock = TestClock()
         val userId = bootstrapUser(testClock = clock)
@@ -131,18 +132,17 @@ class ChannelTests {
 
         // when: getting joined channels without joining any
         // then: the response is a 200
-        client.get().uri(Uris.Channels.GET_JOINED_CHANNELS)
+        client.get().uri(Uris.Channels.LIST_JOINED_CHANNELS)
             .header("Authorization", "Bearer $token")
             .exchange()
             .expectStatus().isOk
             .expectBody()
 
-
         bootstrapChannel(userId)
 
         // when: getting joined channels after joining one
         // then: the response is a 200
-        client.get().uri(Uris.Channels.GET_JOINED_CHANNELS)
+        client.get().uri(Uris.Channels.LIST_JOINED_CHANNELS)
             .header("Authorization", "Bearer $token")
             .exchange()
             .expectStatus().isOk
@@ -150,13 +150,27 @@ class ChannelTests {
 
         // when: getting joined channels without being logged in
         // then: the response is a 401
-        client.get().uri(Uris.Channels.GET_JOINED_CHANNELS)
+        client.get().uri(Uris.Channels.LIST_JOINED_CHANNELS)
             .exchange()
             .expectStatus().isUnauthorized
+
+        // when getting joined channels with invalid page
+        // then: the response is a 400
+        client.get().uri(Uris.Channels.LIST_JOINED_CHANNELS + "?page=-1")
+            .header("Authorization", "Bearer $token")
+            .exchange()
+            .expectStatus().isBadRequest
+
+        // when getting joined channels with invalid page size
+        // then: the response is a 400
+        client.get().uri(Uris.Channels.LIST_JOINED_CHANNELS + "?pageSize=0")
+            .header("Authorization", "Bearer $token")
+            .exchange()
+            .expectStatus().isBadRequest
     }
 
     @Test
-    fun `Channel can be joined`(){
+    fun `Channel can be joined`() {
         val client = WebTestClient.bindToServer().baseUrl(baseURL).build()
         val clock = TestClock()
         val ownerId = bootstrapUser(testClock = clock)
@@ -173,9 +187,10 @@ class ChannelTests {
             .exchange()
             .expectStatus().isOk
 
-        val membership = transactionManager.run {
-            it.channelsRepository.getMembership(channelId, userId)
-        }
+        val membership =
+            transactionManager.run {
+                it.channelsRepository.getMembership(channelId, userId)
+            }
         assertNotNull(membership)
 
         // when: joining a channel without being logged in
@@ -213,7 +228,7 @@ class ChannelTests {
     }
 
     @Test
-    fun `Channel can be searched`(){
+    fun `Channel can be searched`() {
         val client = WebTestClient.bindToServer().baseUrl(baseURL).build()
         val clock = TestClock()
         val userId = bootstrapUser(testClock = clock)
@@ -244,10 +259,24 @@ class ChannelTests {
         client.get().uri(Uris.Channels.SEARCH_CHANNELS)
             .exchange()
             .expectStatus().isUnauthorized
+
+        // when searching for channels with invalid page
+        // then: the response is a 400
+        client.get().uri(Uris.Channels.SEARCH_CHANNELS + "?page=-1")
+            .header("Authorization", "Bearer $token")
+            .exchange()
+            .expectStatus().isBadRequest
+
+        // when searching for channels with invalid page size
+        // then: the response is a 400
+        client.get().uri(Uris.Channels.SEARCH_CHANNELS + "?pageSize=0")
+            .header("Authorization", "Bearer $token")
+            .exchange()
+            .expectStatus().isBadRequest
     }
 
     @Test
-    fun `Messages can be listed`(){
+    fun `Messages can be listed`() {
         val client = WebTestClient.bindToServer().baseUrl(baseURL).build()
         val clock = TestClock()
         val userId = bootstrapUser(testClock = clock)
@@ -288,7 +317,7 @@ class ChannelTests {
     }
 
     @Test
-    fun `Message can be sent`(){
+    fun `Message can be sent`() {
         val client = WebTestClient.bindToServer().baseUrl(baseURL).build()
         val clock = TestClock()
         val userId = bootstrapUser(testClock = clock)
@@ -362,7 +391,7 @@ class ChannelTests {
     }
 
     @Test
-    fun `Invitations can be listed`(){
+    fun `Invitations can be listed`() {
         val client = WebTestClient.bindToServer().baseUrl(baseURL).build()
         val clock = TestClock()
         val userId = bootstrapUser(testClock = clock)
@@ -382,10 +411,24 @@ class ChannelTests {
         client.get().uri(Uris.Channels.LIST_INVITATIONS)
             .exchange()
             .expectStatus().isUnauthorized
+
+        // when listing invitations with invalid page
+        // then: the response is a 400
+        client.get().uri(Uris.Channels.LIST_INVITATIONS + "?page=-1")
+            .header("Authorization", "Bearer $token")
+            .exchange()
+            .expectStatus().isBadRequest
+
+        // when listing invitations with invalid page size
+        // then: the response is a 400
+        client.get().uri(Uris.Channels.LIST_INVITATIONS + "?pageSize=0")
+            .header("Authorization", "Bearer $token")
+            .exchange()
+            .expectStatus().isBadRequest
     }
 
     @Test
-    fun `Invitation can be accepted`(){
+    fun `Invitation can be accepted`() {
         val client = WebTestClient.bindToServer().baseUrl(baseURL).build()
         val clock = TestClock()
         val userId = bootstrapUser(testClock = clock)
@@ -411,27 +454,27 @@ class ChannelTests {
 
         // when: accepting an invitation
         // then: the response is a 201
-        client.get().uri(Uris.Channels.ACCEPT_INVITATION, channelId)
+        client.post().uri(Uris.Channels.ACCEPT_INVITATION, channelId)
             .header("Authorization", "Bearer $otherToken")
             .exchange()
             .expectStatus().isCreated
 
         // when: accepting an invitation without being logged in
         // then: the response is a 401
-        client.get().uri(Uris.Channels.ACCEPT_INVITATION, channelId)
+        client.post().uri(Uris.Channels.ACCEPT_INVITATION, channelId)
             .exchange()
             .expectStatus().isUnauthorized
 
         // when: accepting an invitation that does not exist
         // then: the response is a 404
-        client.get().uri(Uris.Channels.ACCEPT_INVITATION, Int.MAX_VALUE)
+        client.post().uri(Uris.Channels.ACCEPT_INVITATION, Int.MAX_VALUE)
             .header("Authorization", "Bearer $otherToken")
             .exchange()
             .expectStatus().isNotFound
     }
 
     @Test
-    fun `Invitation can be declined`(){
+    fun `Invitation can be declined`() {
         val client = WebTestClient.bindToServer().baseUrl(baseURL).build()
         val clock = TestClock()
         val userId = bootstrapUser(testClock = clock)
@@ -457,33 +500,33 @@ class ChannelTests {
 
         // when: declining an invitation
         // then: the response is a 201
-        client.get().uri(Uris.Channels.DECLINE_INVITATION, channelId)
+        client.post().uri(Uris.Channels.DECLINE_INVITATION, channelId)
             .header("Authorization", "Bearer $otherToken")
             .exchange()
             .expectStatus().isCreated
 
         // when: declining an invitation without being logged in
         // then: the response is a 401
-        client.get().uri(Uris.Channels.DECLINE_INVITATION, channelId)
+        client.post().uri(Uris.Channels.DECLINE_INVITATION, channelId)
             .exchange()
             .expectStatus().isUnauthorized
 
         // when: declining an invitation that does not exist
         // then: the response is a 404
-        client.get().uri(Uris.Channels.DECLINE_INVITATION, Int.MAX_VALUE)
+        client.post().uri(Uris.Channels.DECLINE_INVITATION, Int.MAX_VALUE)
             .header("Authorization", "Bearer $otherToken")
             .exchange()
             .expectStatus().isNotFound
     }
 
     @Test
-    fun `Channel invitations can be created`(){
+    fun `Channel invitations can be created`() {
         val client = WebTestClient.bindToServer().baseUrl(baseURL).build()
         val clock = TestClock()
         val ownerUsername = "owner"
         val userId = bootstrapUser(username = ownerUsername, testClock = clock)
         val inviteeUsername = "username"
-        val otherUserId = bootstrapUser(username= inviteeUsername, testClock = clock)
+        val otherUserId = bootstrapUser(username = inviteeUsername, testClock = clock)
         val channelId = bootstrapChannel(userId)
 
         val token = generateToken(userId, clock)
@@ -547,7 +590,7 @@ class ChannelTests {
             .bodyValue(
                 mapOf(
                     "username" to generateRandomString(),
-                    "role" to MembershipRole.MEMBER.role
+                    "role" to MembershipRole.MEMBER.role,
                 ),
             )
             .exchange()
@@ -568,7 +611,7 @@ class ChannelTests {
     }
 
     @Test
-    fun `Channel can be left`(){
+    fun `Channel can be left`() {
         val client = WebTestClient.bindToServer().baseUrl(baseURL).build()
         val clock = TestClock()
         val userId = bootstrapUser(testClock = clock)

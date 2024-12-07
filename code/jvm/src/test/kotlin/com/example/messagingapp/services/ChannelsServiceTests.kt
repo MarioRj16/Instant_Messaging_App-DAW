@@ -6,12 +6,13 @@ import com.example.messagingapp.bootstrapUser
 import com.example.messagingapp.channelDomain
 import com.example.messagingapp.clearDatabase
 import com.example.messagingapp.domain.Channel
+import com.example.messagingapp.domain.ChannelInvitation
 import com.example.messagingapp.domain.MembershipRole
-import com.example.messagingapp.http.model.output.ChannelInvitationOutputModel
 import com.example.messagingapp.http.model.output.MessageOutputModel
 import com.example.messagingapp.jdbi
 import com.example.messagingapp.transactionManager
 import com.example.messagingapp.utils.Either
+import com.example.messagingapp.utils.PaginatedResponse
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Test
 import kotlin.test.assertEquals
@@ -20,7 +21,6 @@ import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 
 class ChannelsServiceTests {
-
     @AfterEach
     fun tearDown() {
         clearDatabase(jdbi)
@@ -39,18 +39,18 @@ class ChannelsServiceTests {
             is Either.Left -> throw AssertionError("Channel creation failed: ${channelCreationResult.value}")
             is Either.Right -> assertIs<Int>(channelCreationResult.value)
         }
-        
-        transactionManager.run { 
+
+        transactionManager.run {
             val memberships = it.channelsRepository.listMemberships(channelCreationResult.value)
-            assertEquals(1, memberships.size)
-            assertEquals(channelCreationResult.value, memberships[0].channelId)
-            assertEquals(userId, memberships[0].memberId)
-            assertEquals(MembershipRole.OWNER, memberships[0].role)
+            assertEquals(1, memberships.totalSize)
+            assertEquals(channelCreationResult.value, memberships.data[0].channelId)
+            assertEquals(userId, memberships.data[0].member.userId)
+            assertEquals(MembershipRole.OWNER, memberships.data[0].role)
         }
     }
 
     @Test
-    fun `Channel cannot be created with invalid name`(){
+    fun `Channel cannot be created with invalid name`() {
         val testClock = TestClock()
         val channelsService = createChannelsService(testClock)
         val userId = bootstrapUser(testClock = testClock)
@@ -58,13 +58,13 @@ class ChannelsServiceTests {
         val isPublic = true
 
         when (val channelCreationResult = channelsService.createChannel(channelName, userId, isPublic)) {
-            is Either.Left -> assertIs<ChannelCreationError.NameIsNotValid>(channelCreationResult.value)
+            is Either.Left -> assertIs<ChannelCreationError.ChannelNameIsNotValid>(channelCreationResult.value)
             is Either.Right -> throw AssertionError("Channel creation failed: ${channelCreationResult.value}")
         }
     }
 
     @Test
-    fun `Channel cannot be created with existing name`(){
+    fun `Channel cannot be created with existing name`() {
         val testClock = TestClock()
         val channelsService = createChannelsService(testClock)
         val userId = bootstrapUser(testClock = testClock)
@@ -74,7 +74,7 @@ class ChannelsServiceTests {
         channelsService.createChannel(channelName, userId, isPublic)
 
         when (val channelCreationResult = channelsService.createChannel(channelName, userId, isPublic)) {
-            is Either.Left -> assertIs<ChannelCreationError.NameAlreadyExists>(channelCreationResult.value)
+            is Either.Left -> assertIs<ChannelCreationError.ChannelNameAlreadyExists>(channelCreationResult.value)
             is Either.Right -> throw AssertionError("Channel creation failed: ${channelCreationResult.value}")
         }
     }
@@ -93,9 +93,9 @@ class ChannelsServiceTests {
                 assertIs<Channel>(channelGetResult.value)
                 assertEquals(channelGetResult.value.channelId, channelId)
                 assertEquals(channelGetResult.value.channelName, channelName)
-                assertEquals(channelGetResult.value.ownerId, userId)
+                assertEquals(channelGetResult.value.owner.userId, userId)
                 assertEquals(channelGetResult.value.members.size, 1)
-                assertEquals(channelGetResult.value.members[0].userId, userId)
+                assertEquals(channelGetResult.value.members[0].member.userId, userId)
             }
         }
     }
@@ -108,7 +108,7 @@ class ChannelsServiceTests {
         val channelsService = createChannelsService(testClock)
 
         when (val channelGetResult = channelsService.getChannel(channelId, userId)) {
-            is Either.Left -> assertIs<ChannelGetError.ChannelDoesNotExist>(channelGetResult.value)
+            is Either.Left -> assertIs<ChannelGetError.ChannelNotFound>(channelGetResult.value)
             is Either.Right -> throw AssertionError("Channel get failed: ${channelGetResult.value}")
         }
     }
@@ -123,15 +123,15 @@ class ChannelsServiceTests {
         bootstrapChannel(userId)
         bootstrapChannel(userId2)
 
-        when (val channelGetResult = channelsService.getJoinedChannels(userId)) {
+        when (val channelGetResult = channelsService.listJoinedChannels(userId)) {
             is Either.Left -> throw AssertionError("Channel get failed: ${channelGetResult.value}")
             is Either.Right -> {
-                assertIs<List<Channel>>(channelGetResult.value)
-                assertEquals(1, channelGetResult.value.size)
+                assertIs<PaginatedResponse<Channel>>(channelGetResult.value)
+                assertEquals(1, channelGetResult.value.totalSize)
             }
         }
     }
-    
+
     @Test
     fun `Channels can be searched`() {
         val testClock = TestClock()
@@ -146,22 +146,22 @@ class ChannelsServiceTests {
         when (val channelGetResult = channelsService.searchChannels(userId, "")) {
             is Either.Left -> throw AssertionError("Channel get failed: ${channelGetResult.value}")
             is Either.Right -> {
-                assertIs<List<Channel>>(channelGetResult.value)
-                assertEquals(3, channelGetResult.value.size)
+                assertIs<PaginatedResponse<Channel>>(channelGetResult.value)
+                assertEquals(3, channelGetResult.value.totalSize)
             }
         }
 
         when (val channelGetResult = channelsService.searchChannels(userId, "channel2")) {
             is Either.Left -> throw AssertionError("Channel get failed: ${channelGetResult.value}")
             is Either.Right -> {
-                assertIs<List<Channel>>(channelGetResult.value)
-                assertEquals(1, channelGetResult.value.size)
+                assertIs<PaginatedResponse<Channel>>(channelGetResult.value)
+                assertEquals(1, channelGetResult.value.totalSize)
             }
         }
     }
 
     @Test
-    fun `User can join public channel`(){
+    fun `User can join public channel`() {
         val testClock = TestClock()
         val ownerId = bootstrapUser(testClock = testClock)
         val userId = bootstrapUser(testClock = testClock)
@@ -182,20 +182,20 @@ class ChannelsServiceTests {
     }
 
     @Test
-    fun `User cannot join channel if channel is not found`(){
+    fun `User cannot join channel if channel is not found`() {
         val testClock = TestClock()
         val userId = bootstrapUser(testClock = testClock)
         val channelId = Int.MAX_VALUE
         val channelsService = createChannelsService(testClock)
 
         when (val joinResult = channelsService.joinPublicChannel(channelId, userId)) {
-            is Either.Left -> assertIs<JoinChannelError.ChannelDoesNotExist>(joinResult.value)
+            is Either.Left -> assertIs<JoinChannelError.ChannelNotFound>(joinResult.value)
             is Either.Right -> throw AssertionError("Joining channel failed: ${joinResult.value}")
         }
     }
 
     @Test
-    fun `User cannot join channel if user is not public`(){
+    fun `User cannot join channel if user is not public`() {
         val testClock = TestClock()
         val userId = bootstrapUser(testClock = testClock)
         val channelId = bootstrapChannel(userId, isPublic = false)
@@ -208,7 +208,7 @@ class ChannelsServiceTests {
     }
 
     @Test
-    fun `User cannot join channel if user is already a member`(){
+    fun `User cannot join channel if user is already a member`() {
         val testClock = TestClock()
         val userId = bootstrapUser(testClock = testClock)
         val channelId = bootstrapChannel(userId, isPublic = true)
@@ -221,7 +221,7 @@ class ChannelsServiceTests {
     }
 
     @Test
-    fun `User can accept channel invitation and join channel`(){
+    fun `User can accept channel invitation and join channel`() {
         val testClock = TestClock()
         val ownerId = bootstrapUser(testClock = testClock)
         val userId = bootstrapUser(testClock = testClock)
@@ -249,7 +249,7 @@ class ChannelsServiceTests {
     }
 
     @Test
-    fun `User cannot accept channel invitation if invitation is not found`(){
+    fun `User cannot accept channel invitation if invitation is not found`() {
         val testClock = TestClock()
         val ownerId = bootstrapUser(testClock = testClock)
         val userId = bootstrapUser(testClock = testClock)
@@ -263,7 +263,7 @@ class ChannelsServiceTests {
     }
 
     @Test
-    fun `User cannot accept channel invitation if user is already a member`(){
+    fun `User cannot accept channel invitation if user is already a member`() {
         val testClock = TestClock()
         val ownerId = bootstrapUser(testClock = testClock)
         val userId = bootstrapUser(testClock = testClock)
@@ -282,7 +282,7 @@ class ChannelsServiceTests {
     }
 
     @Test
-    fun `User can decline channel invitation`(){
+    fun `User can decline channel invitation`() {
         val testClock = TestClock()
         val ownerId = bootstrapUser(testClock = testClock)
         val userId = bootstrapUser(testClock = testClock)
@@ -307,7 +307,7 @@ class ChannelsServiceTests {
     }
 
     @Test
-    fun `User cannot decline channel invitation if invitation is not found`(){
+    fun `User cannot decline channel invitation if invitation is not found`() {
         val testClock = TestClock()
         val ownerId = bootstrapUser(testClock = testClock)
         val userId = bootstrapUser(testClock = testClock)
@@ -321,7 +321,7 @@ class ChannelsServiceTests {
     }
 
     @Test
-    fun `User cannot decline channel invitation if user is already a member`(){
+    fun `User cannot decline channel invitation if user is already a member`() {
         val testClock = TestClock()
         val ownerId = bootstrapUser(testClock = testClock)
         val userId = bootstrapUser(testClock = testClock)
@@ -340,7 +340,7 @@ class ChannelsServiceTests {
     }
 
     @Test
-    fun `Membership can be deleted`(){
+    fun `Membership can be deleted`() {
         val testClock = TestClock()
         val ownerId = bootstrapUser(testClock = testClock)
         val userId = bootstrapUser(testClock = testClock)
@@ -360,40 +360,40 @@ class ChannelsServiceTests {
     }
 
     @Test
-    fun `Membership cannot be deleted if channel is not found`(){
+    fun `Membership cannot be deleted if channel is not found`() {
         val testClock = TestClock()
         val userId = bootstrapUser(testClock = testClock)
         val channelId = Int.MAX_VALUE
         val channelsService = createChannelsService(testClock)
 
-        when (val deleteResult = channelsService.deleteMembership(channelId, userId)){
-            is Either.Left -> assertIs<DeleteMembershipError.ChannelDoesNotExist>(deleteResult.value)
+        when (val deleteResult = channelsService.deleteMembership(channelId, userId)) {
+            is Either.Left -> assertIs<DeleteMembershipError.ChannelNotFound>(deleteResult.value)
             is Either.Right -> throw AssertionError("Deleting membership failed: ${deleteResult.value}")
         }
     }
 
     @Test
-    fun `Membership cannot be deleted if user is not a member`(){
+    fun `Membership cannot be deleted if user is not a member`() {
         val testClock = TestClock()
         val ownerId = bootstrapUser(testClock = testClock)
         val userId = bootstrapUser(testClock = testClock)
         val channelId = bootstrapChannel(ownerId)
         val channelsService = createChannelsService(testClock)
 
-        when (val deleteResult = channelsService.deleteMembership(channelId, userId)){
+        when (val deleteResult = channelsService.deleteMembership(channelId, userId)) {
             is Either.Left -> assertIs<DeleteMembershipError.UserIsNotMember>(deleteResult.value)
             is Either.Right -> throw AssertionError("Deleting membership failed: ${deleteResult.value}")
         }
     }
 
     @Test
-    fun `Membership cannot be deleted if user is the owner of the channel`(){
+    fun `Membership cannot be deleted if user is the owner of the channel`() {
         val testClock = TestClock()
         val userId = bootstrapUser(testClock = testClock)
         val channelId = bootstrapChannel(userId)
         val channelsService = createChannelsService(testClock)
 
-        when (val deleteResult = channelsService.deleteMembership(channelId, userId)){
+        when (val deleteResult = channelsService.deleteMembership(channelId, userId)) {
             is Either.Left -> assertIs<DeleteMembershipError.UserIsOwner>(deleteResult.value)
             is Either.Right -> throw AssertionError("Deleting membership failed: ${deleteResult.value}")
         }
@@ -422,13 +422,13 @@ class ChannelsServiceTests {
         val channelsService = createChannelsService(testClock)
         val message = "content"
         when (val messageResult = channelsService.createMessage(channelId, userId, message)) {
-            is Either.Left -> assertIs<CreateMessageError.ChannelDoesNotExist>(messageResult.value)
+            is Either.Left -> assertIs<CreateMessageError.ChannelNotFound>(messageResult.value)
             is Either.Right -> throw AssertionError("Sending message failed: ${messageResult.value}")
         }
     }
 
     @Test
-    fun `Messages cannot be created if membership is not found`(){
+    fun `Messages cannot be created if membership is not found`() {
         val testClock = TestClock()
         val channelsService = createChannelsService(testClock)
         val userId = bootstrapUser(testClock = testClock)
@@ -442,7 +442,7 @@ class ChannelsServiceTests {
     }
 
     @Test
-    fun `Messages cannot be created if user is not authorized to write`(){
+    fun `Messages cannot be created if user is not authorized to write`() {
         val testClock = TestClock()
         val channelsService = createChannelsService(testClock)
         val userId = bootstrapUser(testClock = testClock)
@@ -468,7 +468,7 @@ class ChannelsServiceTests {
         val channelsService = createChannelsService(testClock)
         val numberOfMessages = 3
 
-        repeat(numberOfMessages){
+        repeat(numberOfMessages) {
             channelsService.createMessage(channelId, userId, "content")
         }
 
@@ -482,20 +482,20 @@ class ChannelsServiceTests {
     }
 
     @Test
-    fun `Messages cannot be listed if channel is not found`(){
+    fun `Messages cannot be listed if channel is not found`() {
         val testClock = TestClock()
         val userId = bootstrapUser(testClock = testClock)
         val channelId = Int.MAX_VALUE
         val channelsService = createChannelsService(testClock)
 
         when (val messagesResult = channelsService.listMessages(channelId, userId)) {
-            is Either.Left -> assertIs<GetMessagesError.ChannelDoesNotExist>(messagesResult.value)
+            is Either.Left -> assertIs<GetMessagesError.ChannelNotFound>(messagesResult.value)
             is Either.Right -> throw AssertionError("Getting messages failed: ${messagesResult.value}")
         }
     }
 
     @Test
-    fun `Messages cannot be listed if membership is not found`(){
+    fun `Messages cannot be listed if membership is not found`() {
         val testClock = TestClock()
         val userId = bootstrapUser(testClock = testClock)
         val userId2 = bootstrapUser(testClock = testClock)
@@ -527,17 +527,17 @@ class ChannelsServiceTests {
         when (val invitations = channelsService.listInvitations(inviteeId)) {
             is Either.Left -> throw AssertionError("Getting invitations failed: ${invitations.value}")
             is Either.Right -> {
-                assertIs<List<ChannelInvitationOutputModel>>(invitations.value)
-                assertEquals(1, invitations.value.size)
-                assertEquals(invitations.value[0].channelId, channelId)
-                assertEquals(invitations.value[0].inviterId, inviterId)
-                assertEquals(invitations.value[0].inviteeId, inviteeId)
+                assertIs<PaginatedResponse<ChannelInvitation>>(invitations.value)
+                assertEquals(1, invitations.value.totalSize)
+                assertEquals(invitations.value.data[0].channel.channelId, channelId)
+                assertEquals(invitations.value.data[0].inviter.userId, inviterId)
+                assertEquals(invitations.value.data[0].inviteeId, inviteeId)
             }
         }
     }
 
     @Test
-    fun `Cannot invite user to channel as owner`(){
+    fun `Cannot invite user to channel as owner`() {
         val inviteeName = "invitee"
         val testClock = TestClock()
         bootstrapUser(inviteeName, testClock = testClock)
@@ -552,7 +552,7 @@ class ChannelsServiceTests {
     }
 
     @Test
-    fun `Cannot invite to user to channel if invitee is not found`(){
+    fun `Cannot invite to user to channel if invitee is not found`() {
         val testClock = TestClock()
         val inviterId = bootstrapUser(testClock = testClock)
         val inviteeName = "invitee"
@@ -560,13 +560,13 @@ class ChannelsServiceTests {
         val channelsService = createChannelsService(testClock)
 
         when (val invitationResult = channelsService.createChannelInvitation(channelId, inviterId, inviteeName, MembershipRole.MEMBER)) {
-            is Either.Left -> assertIs<InviteMemberError.InviteeDoesNotExist>(invitationResult.value)
+            is Either.Left -> assertIs<InviteMemberError.InviteeNotFound>(invitationResult.value)
             is Either.Right -> throw AssertionError("Invitation failed: ${invitationResult.value}")
         }
     }
 
     @Test
-    fun `Cannot invite user to channel if channel is not found`(){
+    fun `Cannot invite user to channel if channel is not found`() {
         val testClock = TestClock()
         val inviteeName = "invitee"
         val inviterId = bootstrapUser(testClock = testClock)
@@ -575,13 +575,13 @@ class ChannelsServiceTests {
         val channelsService = createChannelsService(testClock)
 
         when (val invitationResult = channelsService.createChannelInvitation(channelId, inviterId, inviteeName, MembershipRole.MEMBER)) {
-            is Either.Left -> assertIs<InviteMemberError.ChannelDoesNotExist>(invitationResult.value)
+            is Either.Left -> assertIs<InviteMemberError.ChannelNotFound>(invitationResult.value)
             is Either.Right -> throw AssertionError("Invitation failed: ${invitationResult.value}")
         }
     }
 
     @Test
-    fun `Cannot invite user to channel if inviter membership is not found`(){
+    fun `Cannot invite user to channel if inviter membership is not found`() {
         val testClock = TestClock()
         val ownerId = bootstrapUser(testClock = testClock)
         val inviterId = bootstrapUser(testClock = testClock)
@@ -591,38 +591,18 @@ class ChannelsServiceTests {
         val channelsService = createChannelsService(testClock)
 
         when (val invitationResult = channelsService.createChannelInvitation(channelId, inviterId, inviteeName, MembershipRole.MEMBER)) {
-            is Either.Left -> assertIs<InviteMemberError.MembershipDoesNotExist>(invitationResult.value)
+            is Either.Left -> assertIs<InviteMemberError.MembershipNotFound>(invitationResult.value)
             is Either.Right -> throw AssertionError("Invitation failed: ${invitationResult.value}")
         }
     }
 
     @Test
-    fun `Cannot invite user to channel if invitee membership is found`(){
+    fun `Cannot invite user to channel if invitee has a higher role than inviter`() {
         val testClock = TestClock()
         val ownerId = bootstrapUser(testClock = testClock)
         val inviterId = bootstrapUser(testClock = testClock)
         val inviteeName = "invitee"
-        val inviteeId = bootstrapUser(inviteeName, testClock = testClock)
-        val channelId = bootstrapChannel(ownerId = ownerId, clock = testClock)
-        val channelsService = createChannelsService(testClock)
-
-        transactionManager.run {
-            it.channelsRepository.createMembership(inviteeId, channelId, testClock, MembershipRole.MEMBER.role)
-        }
-
-        when (val invitationResult = channelsService.createChannelInvitation(channelId, inviterId, inviteeName, MembershipRole.MEMBER)) {
-            is Either.Left -> assertIs<InviteMemberError.MembershipDoesNotExist>(invitationResult.value)
-            is Either.Right -> throw AssertionError("Invitation failed: ${invitationResult.value}")
-        }
-    }
-
-    @Test
-    fun `Cannot invite user to channel if invitee has a higher role than inviter`(){
-        val testClock = TestClock()
-        val ownerId = bootstrapUser(testClock = testClock)
-        val inviterId = bootstrapUser(testClock = testClock)
-        val inviteeName = "invitee"
-        bootstrapUser(inviteeName, testClock = testClock)
+        bootstrapUser(username = inviteeName, testClock = testClock)
         val channelId = bootstrapChannel(ownerId = ownerId, clock = testClock)
         val channelsService = createChannelsService(testClock)
 
@@ -652,14 +632,13 @@ class ChannelsServiceTests {
         when (val invitationsResult = channelsService.listInvitations(inviteeId)) {
             is Either.Left -> throw AssertionError("Getting invitations failed: ${invitationsResult.value}")
             is Either.Right -> {
-                assertIs<List<ChannelInvitationOutputModel>>(invitationsResult.value)
-                assertEquals(2, invitationsResult.value.size)
+                assertIs<PaginatedResponse<ChannelInvitation>>(invitationsResult.value)
+                assertEquals(2, invitationsResult.value.totalSize)
             }
         }
     }
 
     companion object {
-        private fun createChannelsService(testClock: TestClock) =
-            ChannelService(transactionManager, channelDomain, testClock)
+        private fun createChannelsService(testClock: TestClock) = ChannelService(transactionManager, channelDomain, testClock)
     }
 }
