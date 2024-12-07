@@ -34,35 +34,28 @@ const SearchChannelsPage: React.FC = () => {
     useEffect(() => {
         const fetchChannels = async () => {
             setLoading(true);
-            try {
-                const response = await searchChannels(searchTerm, page, pageSize); // Pass the query params
-                if (response.contentType === "application/json") {
-                    const channelsData = response.json as GetChannelsListOutputModel;
-                    setPublicChannels(channelsData.channels);
-                    setTotalPages(channelsData.totalPages);
-                    setHasPrevious(channelsData.hasPrevious);
-                    setHasNext(channelsData.hasNext);
-                } else {
-                    console.error("Failed to fetch channels: Invalid response format");
-                }
-            } catch (error) {
-                console.error("Failed to fetch channels:", error);
-            } finally {
-                setLoading(false);
+            const response = await searchChannels(searchTerm, page, pageSize); // Pass the query params
+            if (response.status === 200) {
+                const channelsData = response.json as GetChannelsListOutputModel;
+                setPublicChannels(channelsData.channels);
+                setTotalPages(channelsData.totalPages);
+                setHasPrevious(channelsData.hasPrevious);
+                setHasNext(channelsData.hasNext);
+            } else {
+                console.error("Failed to fetch channels: Invalid response format");
             }
+
+            setLoading(false);
+
         };
 
         fetchChannels();
     }, [searchTerm, page, pageSize]); // Refetch when query params change
 
     const handleJoinChannel = async (id: number) => {
-        try {
-            await joinChannel(id);
-            console.log(`Successfully joined channel with ID: ${id}`);
-            navigate(`/channels/${id}`); // Redirect to the channel page after joining
-        } catch (error) {
-            console.error(`Failed to join channel with ID ${id}:`, error);
-        }
+        await joinChannel(id);
+        console.log(`Successfully joined channel with ID: ${id}`);
+        navigate(`/channels/${id}`); // Redirect to the channel page after joining
     };
 
     const handleGoToChannel = (id: number) => {

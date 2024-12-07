@@ -69,8 +69,8 @@ export async function sendMessage(id: number,body: SendMessageInputModel) {
     return await callApi<SendMessageInputModel, null>(uri, Method.POST, body, cookies);
 }
 
-export async function getListInvitations(){
-    const uri='/channel/invitations';
+export async function getListInvitations(page:number,pageSize:number) {
+    const uri='/channel/invitations?page='+page+'&pageSize='+pageSize;
     const cookies= getAuthToken()
     return await callApi<null, GetChannelInvitationsListOutputModel>(uri, Method.GET,undefined,cookies);
 }

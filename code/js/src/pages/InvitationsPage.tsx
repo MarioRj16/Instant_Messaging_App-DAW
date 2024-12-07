@@ -25,25 +25,22 @@ const InvitationsPage: React.FC = () => {
 
     useEffect(() => {
         const fetchInvitations = async () => {
-            try {
-                setLoading(true);
-                const response = await getListInvitations();
-                if(response.contentType === "application/json") {
-                    const data = response.json as GetChannelInvitationsListOutputModel;
-                    setInvitations(data.invitations);
-                    setTotalPages(data.totalPages);
-                    setHasPrevious(data.hasPrevious);
-                    setHasNext(data.hasNext);
-                }else setInvitations([])
-            } catch (error) {
-                console.error('Failed to fetch invitations:', error);
-            } finally {
-                setLoading(false);
-            }
+            setLoading(true);
+            const response = await getListInvitations(page,pageSize);
+            if(response.status === 200) {
+                const data = response.json as GetChannelInvitationsListOutputModel;
+                setInvitations(data.invitations);
+                setTotalPages(data.totalPages);
+                setHasPrevious(data.hasPrevious);
+                setHasNext(data.hasNext);
+            }else setInvitations([])
+
+            setLoading(false);
+
         };
 
         fetchInvitations();
-    }, []);
+    }, [page,pageSize]);
 
     const handleAcceptInvite = async (id: number) => {
         try {

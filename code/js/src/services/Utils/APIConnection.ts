@@ -1,6 +1,7 @@
 export type ApiResponse<T> = {
     contentType: string | null;
     json: T;
+    status: number;
 };
 
 type Options = {
@@ -37,6 +38,7 @@ export default function () {
         return {
             contentType: contentType,
             json: json,
+            status: response.status
         };
     }
 
