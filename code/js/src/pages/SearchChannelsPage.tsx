@@ -1,27 +1,47 @@
-import React, { useEffect, useState } from 'react';
-import { Box, Button, List, ListItem, ListItemText, Typography, TextField } from '@mui/material';
+import React, { useEffect, useState } from "react";
+import {
+    Box,
+    Button,
+    List,
+    ListItem,
+    ListItemText,
+    Typography,
+    TextField,
+} from "@mui/material";
 import Navbar from "./components/NavBar";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { searchChannels, joinChannel } from "../services/ChannelsService";
 import { GetChannelsListOutputModel } from "../models/output/GetChannelsListOutputModel";
+import { getCookie } from "../services/Utils/CookiesHandling";
+import { ChannelOutputModel } from "../models/output/ChannelOutputModel";
+import PaginationFooter from "./components/PaginationFooter"; // Import new component
 
 const SearchChannelsPage: React.FC = () => {
-    const [publicChannels, setPublicChannels] = useState<GetChannelsListOutputModel["channels"]>([]);
+    const [publicChannels, setPublicChannels] = useState<ChannelOutputModel[]>([]);
     const [loading, setLoading] = useState(false);
-    const [searchTerm, setSearchTerm] = useState(""); // State to manage input
-    const [searchParams, setSearchParams] = useSearchParams(); // To manage query params
+    const [searchParams, setSearchParams] = useSearchParams(); // To manage URL query params
     const navigate = useNavigate();
+    const currentUserId = Number(getCookie("userId"));
 
-    // Fetch channels when component mounts or query changes
+    const searchTerm = searchParams.get("channelName") || ""; // Retrieve searchTerm from URL
+    const page = Number(searchParams.get("page") || 1); // Retrieve page number from URL
+    const pageSize = Number(searchParams.get("pageSize") || 10); // Retrieve pageSize from URL
+
+    const [totalPages, setTotalPages] = useState(0); // Total pages from API
+    const [hasPrevious, setHasPrevious] = useState(false);
+    const [hasNext, setHasNext] = useState(false);
+
     useEffect(() => {
         const fetchChannels = async () => {
-            const channelName = searchParams.get("channelName") || ""; // Get the query param
             setLoading(true);
             try {
-                const response = await searchChannels(channelName); // Pass the search term to the API
+                const response = await searchChannels(searchTerm, page, pageSize); // Pass the query params
                 if (response.contentType === "application/json") {
                     const channelsData = response.json as GetChannelsListOutputModel;
                     setPublicChannels(channelsData.channels);
+                    setTotalPages(channelsData.totalPages);
+                    setHasPrevious(channelsData.hasPrevious);
+                    setHasNext(channelsData.hasNext);
                 } else {
                     console.error("Failed to fetch channels: Invalid response format");
                 }
@@ -33,7 +53,7 @@ const SearchChannelsPage: React.FC = () => {
         };
 
         fetchChannels();
-    }, [searchParams]); // Trigger when searchParams change
+    }, [searchTerm, page, pageSize]); // Refetch when query params change
 
     const handleJoinChannel = async (id: number) => {
         try {
@@ -45,12 +65,40 @@ const SearchChannelsPage: React.FC = () => {
         }
     };
 
+    const handleGoToChannel = (id: number) => {
+        navigate(`/channels/${id}`);
+    };
+
     const handleSearch = () => {
-        if (searchTerm.trim()) {
-            setSearchParams({ channelName: searchTerm }); // Update the query parameter
-        } else {
-            setSearchParams({}); // Clear the query parameter if input is empty
+        setSearchParams({ channelName: searchTerm, page: "1", pageSize: pageSize.toString() }); // Reset to page 1 on search
+    };
+
+    const goToPreviousPage = () => {
+        if (hasPrevious) {
+            setSearchParams({
+                channelName: searchTerm,
+                page: (page - 1).toString(),
+                pageSize: pageSize.toString(),
+            });
         }
+    };
+
+    const goToNextPage = () => {
+        if (hasNext) {
+            setSearchParams({
+                channelName: searchTerm,
+                page: (page + 1).toString(),
+                pageSize: pageSize.toString(),
+            });
+        }
+    };
+
+    const handlePageSizeChange = (newPageSize: number) => {
+        setSearchParams({
+            channelName: searchTerm,
+            page: "1", // Reset to the first page when changing page size
+            pageSize: newPageSize.toString(),
+        });
     };
 
     return (
@@ -65,7 +113,13 @@ const SearchChannelsPage: React.FC = () => {
                         variant="outlined"
                         fullWidth
                         value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
+                        onChange={(e) =>
+                            setSearchParams({
+                                channelName: e.target.value,
+                                page: "1",
+                                pageSize: pageSize.toString(),
+                            })
+                        }
                     />
                     <Button
                         variant="contained"
@@ -84,38 +138,67 @@ const SearchChannelsPage: React.FC = () => {
                     <Typography variant="h6">No channels found.</Typography>
                 ) : (
                     <List sx={{ width: "80%" }}>
-                        {publicChannels.map((channel) => (
-                            <ListItem
-                                key={channel.channelId}
-                                sx={{
-                                    display: "flex",
-                                    justifyContent: "space-between",
-                                    alignItems: "center",
-                                    borderBottom: "1px solid #ddd",
-                                    paddingY: 2,
-                                }}
-                            >
-                                <ListItemText
-                                    primary={channel.channelName}
-                                    secondary={
-                                        <Typography variant="body2">
-                                            <strong>Owner:</strong> {channel.owner.username}
-                                        </Typography>
-                                    }
-                                />
-                                <Button
-                                    variant="contained"
-                                    color="primary"
-                                    onClick={() => handleJoinChannel(channel.channelId)}
-                                    sx={{ minWidth: "100px" }}
+                        {publicChannels.map((channel) => {
+                            const isMember = channel.members.memberships.some(
+                                (membership) => membership.user.userId === currentUserId
+                            );
+
+                            return (
+                                <ListItem
+                                    key={channel.channelId}
+                                    sx={{
+                                        display: "flex",
+                                        justifyContent: "space-between",
+                                        alignItems: "center",
+                                        borderBottom: "1px solid #ddd",
+                                        paddingY: 2,
+                                    }}
                                 >
-                                    Join
-                                </Button>
-                            </ListItem>
-                        ))}
+                                    <ListItemText
+                                        primary={channel.channelName}
+                                        secondary={
+                                            <Typography variant="body2">
+                                                <strong>Owner:</strong> {channel.owner.username}
+                                            </Typography>
+                                        }
+                                    />
+                                    {isMember ? (
+                                        <Button
+                                            variant="contained"
+                                            color="success"
+                                            onClick={() => handleGoToChannel(channel.channelId)}
+                                            sx={{ minWidth: "100px" }}
+                                        >
+                                            Go
+                                        </Button>
+                                    ) : (
+                                        <Button
+                                            variant="contained"
+                                            color="primary"
+                                            onClick={() => handleJoinChannel(channel.channelId)}
+                                            sx={{ minWidth: "100px" }}
+                                        >
+                                            Join
+                                        </Button>
+                                    )}
+                                </ListItem>
+                            );
+                        })}
                     </List>
                 )}
             </Box>
+
+            {/* Footer */}
+            <PaginationFooter
+                currentPage={page}
+                totalPages={totalPages}
+                hasPrevious={hasPrevious}
+                hasNext={hasNext}
+                pageSize={pageSize}
+                onPrevious={goToPreviousPage}
+                onNext={goToNextPage}
+                onPageSizeChange={handlePageSizeChange}
+            />
         </Box>
     );
 };

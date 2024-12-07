@@ -7,10 +7,21 @@ import { getListInvitations, acceptInvitation, declineInvitation } from "../serv
 import { GetChannelsListOutputModel } from "../models/output/GetChannelsListOutputModel";
 import {ChannelInvitationOutputModel} from "../models/output/ChannelInvitationOutputModel";
 import {GetChannelInvitationsListOutputModel} from "../models/output/GetChannelInvitationsListOutputModel";
+import {useSearchParams} from "react-router-dom";
+import PaginationFooter from "./components/PaginationFooter";
 
 const InvitationsPage: React.FC = () => {
     const [invitations, setInvitations] = useState<ChannelInvitationOutputModel[]>([]);
     const [loading, setLoading] = useState(true);
+
+    const [searchParams, setSearchParams] = useSearchParams()
+    const page = Number(searchParams.get("page") || 1); // Retrieve page number from URL
+    const pageSize = Number(searchParams.get("pageSize") || 10); // Retrieve pageSize from URL
+
+    const [totalPages, setTotalPages] = useState(0); // Total pages from API
+    const [hasPrevious, setHasPrevious] = useState(false);
+    const [hasNext, setHasNext] = useState(false);
+
 
     useEffect(() => {
         const fetchInvitations = async () => {
@@ -20,6 +31,9 @@ const InvitationsPage: React.FC = () => {
                 if(response.contentType === "application/json") {
                     const data = response.json as GetChannelInvitationsListOutputModel;
                     setInvitations(data.invitations);
+                    setTotalPages(data.totalPages);
+                    setHasPrevious(data.hasPrevious);
+                    setHasNext(data.hasNext);
                 }else setInvitations([])
             } catch (error) {
                 console.error('Failed to fetch invitations:', error);
@@ -47,6 +61,30 @@ const InvitationsPage: React.FC = () => {
         } catch (error) {
             console.error(`Failed to decline invitation ${id}:`, error);
         }
+    };
+
+    const goToPreviousPage = () => {
+        if (hasPrevious) {
+            setSearchParams({
+                page: (page - 1).toString(),
+                pageSize: pageSize.toString(),
+            });
+        }
+    };
+
+    const goToNextPage = () => {
+        if (hasNext) {
+            setSearchParams({
+                page: (page + 1).toString(),
+                pageSize: pageSize.toString(),
+            });
+        }
+    };
+    const handlePageSizeChange = (newPageSize: number) => {
+        setSearchParams({
+            page: "1", // Reset to the first page when changing page size
+            pageSize: newPageSize.toString(),
+        });
     };
 
     return (
@@ -116,6 +154,17 @@ const InvitationsPage: React.FC = () => {
                     </List>
                 )}
             </Box>
+            {/* Footer */}
+            <PaginationFooter
+                currentPage={page}
+                totalPages={totalPages}
+                hasPrevious={hasPrevious}
+                hasNext={hasNext}
+                pageSize={pageSize}
+                onPrevious={goToPreviousPage}
+                onNext={goToNextPage}
+                onPageSizeChange={handlePageSizeChange}
+            />
         </Box>
     );
 };

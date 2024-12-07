@@ -31,8 +31,8 @@ export async function getChannel(id: number) {
     return await callApi<null, ChannelOutputModel>(uri, Method.GET,undefined,cookies);
 }
 
-export async function searchChannels(channelName: string) {
-    const uri='/channel/search?channelName='+channelName;
+export async function searchChannels(channelName: string,page:number,pageSize:number) {
+    const uri='/channel/search?channelName='+channelName+'&page='+page+'&pageSize='+pageSize;
     const cookies= getAuthToken()
     return await callApi<null, GetChannelsListOutputModel>(uri, Method.GET,undefined,cookies);
 }

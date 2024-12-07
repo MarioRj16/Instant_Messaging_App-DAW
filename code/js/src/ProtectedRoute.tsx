@@ -17,6 +17,7 @@ function ProtectedRoute({ children }: { children: JSX.Element }) {
            const user = await me(); // Call the me function
            if (user.contentType=== "application/json") {
                const userFormat= user.json as UserOutputModel
+               console.log(userFormat)
                setCookie("username",userFormat.username)
                setCookie("userId",userFormat.userId.toString())
                setAuthStatus('authenticated')}
