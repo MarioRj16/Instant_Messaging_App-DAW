@@ -71,8 +71,8 @@ const ChannelSettingsPage: React.FC = () => {
 
         const leaveError = leaveResponse.json as ProblemModel;
 
-        setErrorTitle(leaveError.title );
-        setErrorDetails(leaveError.detail );
+        setErrorTitle(leaveError.title || "Leave Error");
+        setErrorDetails(leaveError.detail || "Failed to leave the channel.");
         setErrorPopupOpen(true);
 
 
