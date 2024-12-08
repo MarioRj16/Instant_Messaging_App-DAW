@@ -23,7 +23,7 @@ const HomePage: React.FC = () => {
 
     const fetchToken = async () => {
         const result = await invite();
-        if (result.contentType === "application/json") {
+        if (result.status === 201) {
             const successToken = result.json as InviteOutputModel;
             return successToken.invitationCode;
         } else {

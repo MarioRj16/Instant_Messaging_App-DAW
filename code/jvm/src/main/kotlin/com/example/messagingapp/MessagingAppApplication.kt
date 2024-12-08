@@ -5,6 +5,7 @@ import com.example.messagingapp.domain.UserDomainConfig
 import com.example.messagingapp.http.pipeline.AuthenticatedUserArgumentResolver
 import com.example.messagingapp.http.pipeline.AuthenticationInterceptor
 import com.example.messagingapp.repository.jdbi.configureWithAppRequirements
+import io.swagger.v3.oas.models.info.Info
 import kotlinx.datetime.Clock
 import org.jdbi.v3.core.Jdbi
 import org.postgresql.ds.PGSimpleDataSource
@@ -17,6 +18,7 @@ import org.springframework.web.method.support.HandlerMethodArgumentResolver
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer
 import java.util.Locale
+import org.springdoc.core.models.GroupedOpenApi
 import kotlin.time.Duration.Companion.hours
 
 @SpringBootApplication
@@ -48,6 +50,21 @@ class MessagingAppApplication {
             registrationInvitationTTL = 24.hours,
             invitationCodeLength = 4,
         )
+
+    @Bean
+    fun api(): GroupedOpenApi {
+        return GroupedOpenApi.builder()
+            .group("user-api")
+            .addOpenApiCustomizer { openApi ->
+                openApi.info(
+                    Info()
+                        .title("User API")
+                        .description("API documentation for user management")
+                        .version("1.0")
+                )
+            }
+            .build()
+    }
 }
 
 @Configuration

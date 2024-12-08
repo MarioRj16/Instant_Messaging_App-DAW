@@ -71,7 +71,7 @@ class JdbiChannelsRepository(
             handle
                 .createQuery(
                     """
-                SELECT COUNT(*) 
+                SELECT COUNT(DISTINCT c.channel_id)  
                 FROM channel c
                 JOIN membership m ON c.channel_id = m.channel_id
                 WHERE m.member_id = :userId
@@ -85,7 +85,7 @@ class JdbiChannelsRepository(
             handle
                 .createQuery(
                     """
-                SELECT *
+                SELECT DISTINCT ON (c.channel_id) *
                 FROM channel c
                 JOIN membership m ON c.channel_id = m.channel_id
                 JOIN users u ON c.owner_id = u.user_id
@@ -118,7 +118,7 @@ class JdbiChannelsRepository(
             handle
                 .createQuery(
                     """
-            SELECT COUNT(*) 
+            SELECT COUNT(DISTINCT c.channel_id) 
             FROM channel c
             LEFT JOIN membership m ON c.channel_id = m.channel_id
             JOIN users u ON c.owner_id = u.user_id
@@ -135,7 +135,7 @@ class JdbiChannelsRepository(
             handle
                 .createQuery(
                     """
-            SELECT *
+            SELECT DISTINCT ON (c.channel_id) *
             FROM channel c
             LEFT JOIN membership m ON c.channel_id = m.channel_id
             JOIN users u ON c.owner_id = u.user_id
@@ -174,7 +174,8 @@ class JdbiChannelsRepository(
             FROM message m
             JOIN users u ON m.sender_id = u.user_id
             WHERE m.channel_id = :channelId
-        """,
+            ORDER BY m.created_at ASC
+            """,
             )
             .bind("channelId", channelId)
             .mapTo<Message>()

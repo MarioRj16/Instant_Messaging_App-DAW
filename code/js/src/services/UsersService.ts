@@ -14,24 +14,24 @@ export async function register(body: RegisterInputModel) {
 }
 
 export async function login(body: LoginInputModel) {
-    const uri='/login';
+    const uri='/users/login';
     return await callApi<LoginInputModel, LoginOutputModel>(uri, Method.POST, body);
 }
 
 export async function logout() {
-    const uri='/logout';
+    const uri='/users/logout';
     const cookies= getAuthToken()
     return await callApi(uri, Method.POST,undefined,cookies);
 }
 
 export async function invite() {
-    const uri='/invite';
+    const uri='/users/invite';
     const cookies= getAuthToken()
     return await callApi<null,InviteOutputModel>(uri, Method.POST, undefined,cookies);
 }
 
 export async function me(){
-    const uri='/me';
+    const uri='/users/me';
     const cookies= getAuthToken()
     return await callApi<null,UserOutputModel>(uri, Method.GET,undefined,cookies);
 }

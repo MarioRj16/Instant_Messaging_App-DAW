@@ -9,6 +9,8 @@ import { useNavigate, useOutletContext, useParams } from "react-router-dom";
 import { RoleModel } from "../models/RoleModel";
 import { MembershipOutputModel } from "../models/output/MembershipOutputModel";
 import { getCookie } from "../services/Utils/CookiesHandling";
+import ErrorPopup from "./components/ErrorPopup";
+import {ProblemModel} from "../models/ProblemModel"; // Import ErrorPopup component
 
 export type membersAndRole = {
     members: MembershipOutputModel[],
@@ -25,27 +27,59 @@ const ChannelSettingsPage: React.FC = () => {
     const { members, role } = useOutletContext<membersAndRole>();
     const navigate = useNavigate();
 
+    // States for ErrorPopup
+    const [errorPopupOpen, setErrorPopupOpen] = useState(false);
+    const [errorTitle, setErrorTitle] = useState('');
+    const [errorDetails, setErrorDetails] = useState('');
+
     // Toggle invite dialog
     const handleOpenInviteDialog = () => setInviteDialogOpen(true);
     const handleCloseInviteDialog = () => {
         setInviteDialogOpen(false);
         setNewUsername('');
-        setNewUserRole('member');
+        setNewUserRole(RoleModel.member);
     };
 
-    const handleInvite = () => {
-        console.log(`Inviting ${newUsername} as ${newUserRole}`);
+    const handleInvite = async () => {
+        const inviteResponse = await inviteMember(Number(id), { username: newUsername, role: newUserRole });
+        if (inviteResponse.status === undefined ) {
+            console.log("Successfully invited the member.");
 
-        inviteMember(Number(id), { username: newUsername, role: newUserRole }).then();
+
+        } else {
+            const inviteError = inviteResponse.json as ProblemModel;
+            setErrorTitle(inviteError.title || "Invite Error");
+            setErrorDetails(inviteError.detail || "Failed to invite the member.");
+            setErrorPopupOpen(true);
+
+        }
         handleCloseInviteDialog();
+
     };
 
-    // Leave Channel functionality
-    const handleLeaveChannel = () => {
-        console.log("Leaving the channel...");
-        leaveChannel(Number(id)).then(res => { res.contentType });
-        navigate('/');
+    const handleLeaveChannel = async () => {
+        console.log("Attempting to leave the channel...");
+        const leaveResponse = await leaveChannel(Number(id));
+        console.log(leaveResponse.status)
+
+        if (leaveResponse.status===undefined) {
+            console.log("Successfully left the channel.");
+            // Redirect to another page or update the state to reflect that the user has left
+            navigate('/'); // Redirect after leaving
+            return;
+        }
+
+        const leaveError = leaveResponse.json as ProblemModel;
+
+        setErrorTitle(leaveError.title || "Leave Error");
+        setErrorDetails(leaveError.detail || "Failed to leave the channel.");
+        setErrorPopupOpen(true);
+
+
+
     };
+
+
 
     return (
         <Box display="flex" flexDirection="column" minHeight="100vh" width="100%" height="100%">
@@ -134,6 +168,14 @@ const ChannelSettingsPage: React.FC = () => {
                     </Button>
                 </DialogActions>
             </Dialog>
+
+            {/* ErrorPopup Component */}
+            <ErrorPopup
+                open={errorPopupOpen}
+                title={errorTitle}
+                details={errorDetails}
+                onClose={() => setErrorPopupOpen(false)} // Close the popup
+            />
         </Box>
     );
 };

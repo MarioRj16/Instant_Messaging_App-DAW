@@ -5,12 +5,10 @@ import org.springframework.stereotype.Component
 @Component
 class ChannelDomain {
     companion object {
-        private val CHANNEL_NAME_LENGTH_RANGE = 4..64
+        private const val CHANNEL_NAME_REGEX = "^[a-zA-Z0-9_]{4,64}\$"
     }
 
-    fun isValidName(channelName: String): Boolean =
-        channelName.length in CHANNEL_NAME_LENGTH_RANGE &&
-            channelName.all { it.isLetterOrDigit() }
+    fun isValidName(channelName: String): Boolean = CHANNEL_NAME_REGEX.toRegex().matches(channelName)
 
     fun isHigherRole(
         inviterRole: MembershipRole,

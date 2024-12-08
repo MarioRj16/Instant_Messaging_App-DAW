@@ -13,9 +13,12 @@ import com.example.messagingapp.http.model.input.InvitationInputModel
 import com.example.messagingapp.http.model.input.MessageInputModel
 import com.example.messagingapp.http.model.output.*
 import com.example.messagingapp.http.model.output.ChannelCreateOutputModel
+import com.example.messagingapp.http.model.output.Problem
 import com.example.messagingapp.services.*
 import com.example.messagingapp.utils.Failure
 import com.example.messagingapp.utils.Success
+import io.swagger.v3.oas.annotations.Operation
+import io.swagger.v3.oas.annotations.tags.Tag
 import kotlinx.datetime.Clock
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
@@ -30,16 +33,21 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter
 import java.util.concurrent.ConcurrentHashMap
 
 @RestController
+@Tag(name = "Channels", description = "Operations related to channels")
 class ChannelController(
     private val channelService: ChannelService,
 ) {
     private val channelEmitterRegistry = ConcurrentHashMap<Int, ChannelEmitter>()
 
-    @PostMapping(Uris.Channels.CREATE)
+    @PostMapping(Uris.Channels.BASE)
+    @Operation(
+        summary = "Create a new channel",
+        description = "Create a new channel with the given name and visibility."
+    )
     fun createChannel(
         @RequestBody channel: ChannelSearchInputModel,
         user: AuthenticatedUser,
-    ): ResponseEntity<ChannelCreateOutputModel> =
+    ): ResponseEntity<*> =
 
         when (val res = channelService.createChannel(channel.channelName, user.user.userId, channel.isPublic)) {
             is Success -> {
@@ -53,12 +61,24 @@ class ChannelController(
             }
             is Failure ->
                 when (res.value) {
-                    ChannelCreationError.ChannelNameIsNotValid -> ResponseEntity(HttpStatus.BAD_REQUEST)
-                    ChannelCreationError.ChannelNameAlreadyExists -> ResponseEntity(HttpStatus.BAD_REQUEST)
+                    ChannelCreationError.ChannelNameIsNotValid ->
+                        Problem.response(
+                            HttpStatus.BAD_REQUEST.value(),
+                            Problem.invalidChannelName(Uris.Channels.create()),
+                        )
+                    ChannelCreationError.ChannelNameAlreadyExists ->
+                        Problem.response(
+                            HttpStatus.BAD_REQUEST.value(),
+                            Problem.channelNameAlreadyExists(channel.channelName, Uris.Channels.create()),
+                        )
                 }
         }
 
-    @GetMapping(Uris.Channels.LISTEN_CHANNELS)
+    @GetMapping(Uris.Channels.LISTEN)
+    @Operation(
+        summary = "Listen to all channels",
+        description = "Listen to all channels the user is part of."
+    )
     fun listenToAllChannels(user: AuthenticatedUser): SseEmitter {
         // Create a new composite SseEmitter for the user
         val compositeEmitter = SseEmitter(Long.MAX_VALUE)
@@ -82,34 +102,23 @@ class ChannelController(
                 channelEmitterRegistry[channel.channelId]
                     ?: throw IllegalArgumentException("Channel not found: ${channel.channelId}")
 
-            // Create an individual SseEmitter for the channel
             val userEmitter = SseEmitter(Long.MAX_VALUE)
-
-            // Add the userEmitter to the channel
             channelEmitter.addListener(user.user.userId, userEmitter)
-
-            // Cleanup logic for this channel
             val cleanup = {
                 channelEmitter.removeListener(user.user.userId)
-                // logger.info("Cleaned up listener for user ${user.user.userId} in channel ${channel.channelId}")
             }
             cleanupHandlers.add(cleanup)
 
-            // Handle completion, timeout, and errors for the individual emitter
             userEmitter.onCompletion {
                 cleanup()
-                // logger.info("User ${user.user.userId} completed for channel ${channel.channelId}")
             }
             userEmitter.onTimeout {
                 cleanup()
-                // logger.warn("User ${user.user.userId} timed out for channel ${channel.channelId}")
             }
-            userEmitter.onError { ex ->
+            userEmitter.onError {
                 cleanup()
-                // logger.error("User ${user.user.userId} encountered an error in channel ${channel.channelId}: ${ex.message}")
             }
 
-            // Forward events from the individual emitter to the composite emitter
             channelEmitter.addListener(
                 user.user.userId,
                 object : SseEmitter() {
@@ -117,7 +126,6 @@ class ChannelController(
                         try {
                             compositeEmitter.send(event)
                         } catch (e: Exception) {
-                            // logger.error("Error forwarding event to composite emitter for user ${user.user.userId}", e)
                             this.completeWithError(e)
                         }
                     }
@@ -125,68 +133,79 @@ class ChannelController(
             )
         }
 
-        // Global cleanup if the composite emitter is closed
         compositeEmitter.onCompletion {
             cleanupHandlers.forEach { it() }
-            // logger.info("Composite emitter completed for user ${user.user.userId}")
         }
         compositeEmitter.onTimeout {
             cleanupHandlers.forEach { it() }
-            // logger.warn("Composite emitter timed out for user ${user.user.userId}")
         }
-        compositeEmitter.onError { ex ->
+        compositeEmitter.onError {
             cleanupHandlers.forEach { it() }
-            // logger.error("Composite emitter encountered an error for user ${user.user.userId}: ${ex.message}")
         }
-
         return compositeEmitter
     }
 
     @GetMapping(Uris.Channels.GET_BY_ID)
+    @Operation(
+        summary = "Get a channel by ID",
+        description = "Get a channel by its ID."
+    )
     fun getChannel(
         @PathVariable id: Int,
         user: AuthenticatedUser,
-    ): ResponseEntity<ChannelOutputModel> =
+    ): ResponseEntity<*> =
         when (val res = channelService.getChannel(id, user.user.userId)) {
             is Success -> ResponseEntity(ChannelOutputModel(res.value), HttpStatus.OK)
             is Failure ->
                 when (res.value) {
-                    ChannelGetError.ChannelNotFound -> ResponseEntity(HttpStatus.NOT_FOUND)
+                    ChannelGetError.ChannelNotFound ->
+                        Problem.response(
+                            HttpStatus.NOT_FOUND.value(),
+                            Problem.channelNotFound(id, Uris.Channels.getById(id)),
+                        )
                 }
         }
 
-    @GetMapping(Uris.Channels.LIST_JOINED_CHANNELS)
+    @GetMapping(Uris.Channels.BASE)
+    @Operation(
+        summary = "List all channels",
+        description = "List all channels the user is part of."
+    )
     fun listJoinedChannels(
         user: AuthenticatedUser,
         @RequestParam(defaultValue = DEFAULT_PAGE) page: Int,
         @RequestParam(defaultValue = DEFAULT_PAGE_SIZE) pageSize: Int,
-    ): ResponseEntity<ChannelListOutputModel> {
+    ): ResponseEntity<*> {
         validatePaginationParams(page, pageSize)
-        return when (val res = channelService.listJoinedChannels(user.user.userId, page, pageSize)) {
-            is Success -> ResponseEntity(ChannelListOutputModel(res.value), HttpStatus.OK)
-            is Failure -> ResponseEntity(HttpStatus.UNAUTHORIZED) // never happens
-        }
+        val res = channelService.listJoinedChannels(user.user.userId, page, pageSize) as Success // It's always a success
+        return ResponseEntity(ChannelListOutputModel(res.value), HttpStatus.OK)
     }
 
-    @GetMapping(Uris.Channels.SEARCH_CHANNELS)
+    @GetMapping(Uris.Channels.SEARCH)
+    @Operation(
+        summary = "Search for channels",
+        description = "Search for channels by name."
+    )
     fun searchChannels(
         user: AuthenticatedUser,
         @RequestParam(defaultValue = DEFAULT_CHANNEL_NAME) channelName: String,
         @RequestParam(defaultValue = DEFAULT_PAGE) page: Int,
         @RequestParam(defaultValue = DEFAULT_PAGE_SIZE) pageSize: Int,
-    ): ResponseEntity<ChannelListOutputModel> {
+    ): ResponseEntity<*> {
         validatePaginationParams(page, pageSize)
-        return when (val res = channelService.searchChannels(user.user.userId, channelName, page, pageSize)) {
-            is Success -> ResponseEntity(ChannelListOutputModel(res.value), HttpStatus.OK)
-            is Failure -> ResponseEntity(HttpStatus.UNAUTHORIZED) // never happens
-        }
+        val res = channelService.searchChannels(user.user.userId, channelName, page, pageSize) as Success // It's always a success
+        return ResponseEntity(ChannelListOutputModel(res.value), HttpStatus.OK)
     }
 
-    @PostMapping(Uris.Channels.JOIN_CHANNEL)
+    @PostMapping(Uris.Channels.JOIN)
+    @Operation(
+        summary = "Join a public channel",
+        description = "Join a public channel by its ID."
+    )
     fun joinChannel(
         @PathVariable id: Int,
         user: AuthenticatedUser,
-    ): ResponseEntity<Unit> =
+    ): ResponseEntity<*> =
         when (val res = channelService.joinPublicChannel(id, user.user.userId)) {
             is Success -> {
                 channelEmitterRegistry.computeIfAbsent(id) { ChannelEmitter() }
@@ -194,38 +213,65 @@ class ChannelController(
                 // Add the user as a listener
                 val emitter = SseEmitter(Long.MAX_VALUE)
                 channelEmitterRegistry[id]?.addListener(user.user.userId, emitter)
-
                 ResponseEntity(res.value, HttpStatus.OK)
             }
             is Failure ->
                 when (res.value) {
-                    JoinChannelError.ChannelNotFound -> ResponseEntity(HttpStatus.NOT_FOUND)
-                    JoinChannelError.UserIsAlreadyMember -> ResponseEntity(HttpStatus.CONFLICT)
-                    JoinChannelError.ChannelIsNotPublic -> ResponseEntity(HttpStatus.FORBIDDEN)
+                    JoinChannelError.ChannelNotFound ->
+                        Problem.response(
+                            HttpStatus.NOT_FOUND.value(),
+                            Problem.channelNotPublic(id, Uris.Channels.getById(id)),
+                        )
+                    JoinChannelError.UserIsAlreadyMember ->
+                        Problem.response(
+                            HttpStatus.CONFLICT.value(),
+                            Problem.userAlreadyInChannel(user.user.userId, id, Uris.Channels.getById(id)),
+                        )
+                    JoinChannelError.ChannelIsNotPublic ->
+                        Problem.response(
+                            HttpStatus.FORBIDDEN.value(),
+                            Problem.channelNotPublic(id, Uris.Channels.getById(id)),
+                        )
                 }
         }
 
-    @GetMapping(Uris.Channels.LIST_MESSAGES)
+    @GetMapping(Uris.Channels.MESSAGES)
+    @Operation(
+        summary = "List messages",
+        description = "List messages in a channel."
+    )
     fun listMessages(
         @PathVariable id: Int,
         user: AuthenticatedUser,
-    ): ResponseEntity<MessageListOutputModel> {
+    ): ResponseEntity<*> {
         return when (val res = channelService.listMessages(id, user.user.userId)) {
             is Success -> ResponseEntity(MessageListOutputModel(res.value), HttpStatus.OK)
             is Failure ->
                 when (res.value) {
-                    GetMessagesError.ChannelNotFound -> ResponseEntity(HttpStatus.NOT_FOUND)
-                    GetMessagesError.UserIsNotMember -> ResponseEntity(HttpStatus.FORBIDDEN)
+                    GetMessagesError.ChannelNotFound ->
+                        Problem.response(
+                            HttpStatus.NOT_FOUND.value(),
+                            Problem.channelNotFound(id, Uris.Channels.getById(id)),
+                        )
+                    GetMessagesError.UserIsNotMember ->
+                        Problem.response(
+                            HttpStatus.FORBIDDEN.value(),
+                            Problem.userNotInChannel(user.user.userId, id, Uris.Channels.getById(id)),
+                        )
                 }
         }
     }
 
-    @PostMapping(Uris.Channels.SEND_MESSAGE)
+    @PostMapping(Uris.Channels.MESSAGES)
+    @Operation(
+        summary = "Send a message",
+        description = "Send a message to a channel."
+    )
     fun sendMessage(
         @PathVariable id: Int,
         user: AuthenticatedUser,
         @RequestBody message: MessageInputModel,
-    ): ResponseEntity<Unit> =
+    ): ResponseEntity<*> =
         when (val res = channelService.createMessage(id, user.user.userId, message.content)) {
             is Success -> {
                 val messageOutput =
@@ -237,22 +283,38 @@ class ChannelController(
                         Clock.System.now().toString(),
                     )
                 channelEmitterRegistry[id]?.broadcast(messageOutput)
-                ResponseEntity(HttpStatus.CREATED)
+                ResponseEntity(Unit, HttpStatus.CREATED)
             }
             is Failure ->
                 when (res.value) {
-                    CreateMessageError.ChannelNotFound -> ResponseEntity(HttpStatus.NOT_FOUND)
-                    CreateMessageError.UserIsNotAuthorizedToWrite -> ResponseEntity(HttpStatus.FORBIDDEN)
-                    CreateMessageError.UserIsNotMember -> ResponseEntity(HttpStatus.FORBIDDEN)
+                    CreateMessageError.ChannelNotFound ->
+                        Problem.response(
+                            HttpStatus.NOT_FOUND.value(),
+                            Problem.channelNotFound(id, Uris.Channels.getById(id)),
+                        )
+                    CreateMessageError.UserIsNotAuthorizedToWrite ->
+                        Problem.response(
+                            HttpStatus.FORBIDDEN.value(),
+                            Problem.userNotAuthorizedToWrite(user.user.userId, id, Uris.Channels.getById(id)),
+                        )
+                    CreateMessageError.UserIsNotMember ->
+                        Problem.response(
+                            HttpStatus.FORBIDDEN.value(),
+                            Problem.userNotInChannel(user.user.userId, id, Uris.Channels.getById(id)),
+                        )
                 }
         }
 
-    @PostMapping(Uris.Channels.INVITE_MEMBER)
+    @PostMapping(Uris.Channels.MEMBERS)
+    @Operation(
+        summary = "Invite a member",
+        description = "Invite a member to a channel."
+    )
     fun inviteMember(
         @PathVariable id: Int,
         user: AuthenticatedUser,
         @RequestBody invitation: InvitationInputModel,
-    ): ResponseEntity<Unit> {
+    ): ResponseEntity<*> {
         return try {
             when (
                 val res =
@@ -266,36 +328,65 @@ class ChannelController(
                 is Success -> ResponseEntity(HttpStatus.CREATED)
                 is Failure ->
                     when (res.value) {
-                        InviteMemberError.InviteeNotFound -> ResponseEntity(HttpStatus.NOT_FOUND)
-                        InviteMemberError.ChannelNotFound -> ResponseEntity(HttpStatus.NOT_FOUND)
-                        InviteMemberError.MembershipNotFound -> ResponseEntity(HttpStatus.UNAUTHORIZED)
-                        InviteMemberError.ForbiddenRole -> ResponseEntity(HttpStatus.FORBIDDEN)
-                        InviteMemberError.MembershipAlreadyExists -> ResponseEntity(HttpStatus.CONFLICT)
+                        InviteMemberError.InviteeNotFound ->
+                            Problem.response(
+                                HttpStatus.NOT_FOUND.value(),
+                                Problem.inviteeNotFound(invitation.username, Uris.Channels.inviteMember(id)),
+                            )
+                        InviteMemberError.ChannelNotFound ->
+                            Problem.response(
+                                HttpStatus.NOT_FOUND.value(),
+                                Problem.channelNotFound(id, Uris.Channels.inviteMember(id)),
+                            )
+                        InviteMemberError.MembershipNotFound ->
+                            Problem.response(
+                                HttpStatus.UNAUTHORIZED.value(),
+                                Problem.membershipNotFound(user.user.userId, id, Uris.Channels.inviteMember(id)),
+                            )
+                        InviteMemberError.ForbiddenRole ->
+                            Problem.response(
+                                HttpStatus.FORBIDDEN.value(),
+                                Problem.forbiddenRole(user.user.userId, id, Uris.Channels.inviteMember(id)),
+                            )
+                        InviteMemberError.MembershipAlreadyExists ->
+                            Problem.response(
+                                HttpStatus.CONFLICT.value(),
+                                Problem.userAlreadyInChannel(user.user.userId, id, Uris.Channels.inviteMember(id)),
+                            )
                     }
             }
         } catch (e: Exception) {
-            ResponseEntity(HttpStatus.INTERNAL_SERVER_ERROR)
+            Problem.response(
+                HttpStatus.INTERNAL_SERVER_ERROR.value(),
+                Problem.internalServerError(e.message ?: "Unknown error", Uris.Channels.inviteMember(id)),
+            )
         }
     }
 
-    @GetMapping(Uris.Channels.LIST_INVITATIONS)
+    @GetMapping(Uris.Channels.INVITATIONS)
+    @Operation(
+        summary = "List invitations",
+        description = "List all invitations the user has received."
+    )
     fun listInvitations(
         user: AuthenticatedUser,
         @RequestParam(defaultValue = DEFAULT_PAGE) page: Int,
         @RequestParam(defaultValue = DEFAULT_PAGE_SIZE) pageSize: Int,
     ): ResponseEntity<InvitationsListOutputModel> {
         validatePaginationParams(page, pageSize)
-        return when (val res = channelService.listInvitations(user.user.userId, page, pageSize)) {
-            is Success -> ResponseEntity(InvitationsListOutputModel(res.value), HttpStatus.OK)
-            is Failure -> ResponseEntity(HttpStatus.INTERNAL_SERVER_ERROR) // never happens
-        }
+        val res = channelService.listInvitations(user.user.userId, page, pageSize) as Success // It's always a success
+        return ResponseEntity(InvitationsListOutputModel(res.value), HttpStatus.OK)
     }
 
     @PostMapping(Uris.Channels.ACCEPT_INVITATION)
+    @Operation(
+        summary = "Accept an invitation",
+        description = "Accept an invitation to a channel."
+    )
     fun acceptInvitation(
         @PathVariable id: Int,
         user: AuthenticatedUser,
-    ): ResponseEntity<Unit> =
+    ): ResponseEntity<*> =
         when (val res = channelService.acceptChannelInvitation(id, user.user.userId)) {
             is Success -> {
                 channelEmitterRegistry.computeIfAbsent(id) { ChannelEmitter() }
@@ -308,30 +399,54 @@ class ChannelController(
             }
             is Failure ->
                 when (res.value) {
-                    AcceptChannelInvitationError.UserIsAlreadyMember -> ResponseEntity(HttpStatus.FORBIDDEN)
-                    AcceptChannelInvitationError.InvitationNotFound -> ResponseEntity(HttpStatus.NOT_FOUND)
+                    AcceptChannelInvitationError.UserIsAlreadyMember ->
+                        Problem.response(
+                            HttpStatus.FORBIDDEN.value(),
+                            Problem.userAlreadyInChannel(user.user.userId, id, Uris.Channels.acceptInvitation(id)),
+                        )
+                    AcceptChannelInvitationError.InvitationNotFound ->
+                        Problem.response(
+                            HttpStatus.NOT_FOUND.value(),
+                            Problem.invitationNotFound(id, Uris.Channels.acceptInvitation(id)),
+                        )
                 }
         }
 
     @PostMapping(Uris.Channels.DECLINE_INVITATION)
+    @Operation(
+        summary = "Decline an invitation",
+        description = "Decline an invitation to a channel."
+    )
     fun declineInvitation(
         @PathVariable id: Int,
         user: AuthenticatedUser,
-    ): ResponseEntity<Unit> =
+    ): ResponseEntity<*> =
         when (val res = channelService.declineChannelInvitation(id, user.user.userId)) {
             is Success -> ResponseEntity(res.value, HttpStatus.CREATED)
             is Failure ->
                 when (res.value) {
-                    DeclineChannelInvitationError.UserIsAlreadyMember -> ResponseEntity(HttpStatus.FORBIDDEN)
-                    DeclineChannelInvitationError.InvitationNotFound -> ResponseEntity(HttpStatus.NOT_FOUND)
+                    DeclineChannelInvitationError.UserIsAlreadyMember ->
+                        Problem.response(
+                            HttpStatus.FORBIDDEN.value(),
+                            Problem.userAlreadyInChannel(user.user.userId, id, Uris.Channels.declineInvitation(id)),
+                        )
+                    DeclineChannelInvitationError.InvitationNotFound ->
+                        Problem.response(
+                            HttpStatus.NOT_FOUND.value(),
+                            Problem.invitationNotFound(id, Uris.Channels.declineInvitation(id)),
+                        )
                 }
         }
 
-    @DeleteMapping(Uris.Channels.LEAVE_CHANNEL)
+    @DeleteMapping(Uris.Channels.MEMBERS)
+    @Operation(
+        summary = "Remove a member",
+        description = "Remove a member from a channel."
+    )
     fun leaveChannel(
         @PathVariable id: Int,
         user: AuthenticatedUser,
-    ): ResponseEntity<Unit> =
+    ): ResponseEntity<*> =
         when (val res = channelService.deleteMembership(id, user.user.userId)) {
             is Success -> {
                 channelEmitterRegistry[id]?.removeListener(user.user.userId)
@@ -339,9 +454,21 @@ class ChannelController(
             }
             is Failure ->
                 when (res.value) {
-                    DeleteMembershipError.UserIsOwner -> ResponseEntity(HttpStatus.FORBIDDEN)
-                    DeleteMembershipError.UserIsNotMember -> ResponseEntity(HttpStatus.FORBIDDEN)
-                    DeleteMembershipError.ChannelNotFound -> ResponseEntity(HttpStatus.NOT_FOUND)
+                    DeleteMembershipError.UserIsOwner ->
+                        Problem.response(
+                            HttpStatus.FORBIDDEN.value(),
+                            Problem.userIsOwner(user.user.userId, id, Uris.Channels.leaveChannel(id)),
+                        )
+                    DeleteMembershipError.UserIsNotMember ->
+                        Problem.response(
+                            HttpStatus.FORBIDDEN.value(),
+                            Problem.userNotInChannel(user.user.userId, id, Uris.Channels.leaveChannel(id)),
+                        )
+                    DeleteMembershipError.ChannelNotFound ->
+                        Problem.response(
+                            HttpStatus.NOT_FOUND.value(),
+                            Problem.channelNotFound(id, Uris.Channels.leaveChannel(id)),
+                        )
                 }
         }
 }

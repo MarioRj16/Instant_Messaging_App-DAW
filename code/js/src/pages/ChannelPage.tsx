@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Box, List, ListItem, ListItemText, TextField, Button } from '@mui/material';
 import SendIcon from '@mui/icons-material/Send';
-import { useParams, useLocation, Outlet, useOutletContext } from 'react-router-dom';
+import {useParams, useLocation, Outlet, useOutletContext, useNavigate} from 'react-router-dom';
 import { GetMessagesListOutputModel } from '../models/output/GetMessagesListOutputModel';
 import { getChannel, getMessages, listenToMessages, sendMessage } from "../services/ChannelsService";
 import { MessageOutputModel } from "../models/output/MessagesOutputModel";
@@ -30,6 +30,7 @@ const getRelativeTime = (createdAt: string): string => {
 const ChannelPage: React.FC = () => {
     const { id } = useParams<{ id: string }>(); // Channel ID from URL
     const location = useLocation();
+    const navigate = useNavigate()
     const currentUser = Number(getCookie("userId")); // Current user ID
     const [messages, setMessages] = useState<MessageOutputModel[]>([]); // Manage messages
     const [newMessage, setNewMessage] = useState(''); // Store new message input
@@ -44,19 +45,22 @@ const ChannelPage: React.FC = () => {
     useEffect(() => {
         const fetchMessages = async () => {
             if (id) {
-                try {
-                    const fetchedMessages = await getMessages(Number(id));
+                const fetchedMessages = await getMessages(Number(id));
+                if(fetchedMessages.status === 200) {
                     const messagesData = fetchedMessages.json as GetMessagesListOutputModel;
-                    setMessages(messagesData.messages.sort((a, b) => a.createdAt.localeCompare(b.createdAt)));
-                } catch (error) {
-                    console.error('Failed to fetch messages:', error);
+                    //setMessages(messagesData.messages.sort((a, b) => a.createdAt.localeCompare(b.createdAt)));
+                    setMessages(messagesData.messages);
+                }else {
+                    console.error("Failed to fetch messages: Invalid response format");
+                    navigate('/channels')
                 }
+
             }
         };
 
         const fetchChannel = async () => {
             const response = await getChannel(Number(id));
-            if (response.contentType === "application/json") {
+            if (response.status === 200) {
                 const channelData = response.json as ChannelOutputModel;
                 setMembers(channelData.members.memberships);
                 setIsViewer(

@@ -20,7 +20,7 @@ const YourChannels: React.FC = () => {
 
         const fetchChannels = async () => {
             const response = await getChannels();
-            if (response.contentType === "application/json") {
+            if (response.status === 200) {
                 const channelsData = response.json as GetChannelsListOutputModel;
                 setChannels(channelsData.channels); // Assuming response is an array of channels
                 setLoading(false);

@@ -1,22 +1,32 @@
 import React, { useState } from 'react';
-import { Box, Button, TextField, Typography, FormControl, InputLabel, Select, MenuItem } from '@mui/material';
+import { Box, Button, TextField, FormControl, InputLabel, Select, MenuItem } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import Navbar from "./components/NavBar";
+import ErrorPopup from "./components/ErrorPopup";
 import { createChannel } from "../services/ChannelsService";
+import { ProblemModel } from "../models/ProblemModel";
 
 const CreateChannelPage: React.FC = () => {
     const [channelName, setChannelName] = useState('');
     const [channelType, setChannelType] = useState<boolean>(true);
     const navigate = useNavigate();
 
-    const handleCreateChannel = () => {
-        console.log(`Creating channel: ${channelName} (${channelType})`);
+    // ErrorPopup state
+    const [errorPopupOpen, setErrorPopupOpen] = useState(false);
+    const [errorTitle, setErrorTitle] = useState('');
+    const [errorDetails, setErrorDetails] = useState('');
 
-        createChannel({ channelName: channelName, isPublic: channelType }).then(() => {
-            navigate('/channels');
-        }).catch((error) => {
-            console.error('Failed to create channel:', error);
-        });
+    const handleCreateChannel = async () => {
+        console.log(`Creating channel: ${channelName} (${channelType})`);
+        const resp=await createChannel({ channelName: channelName, isPublic: channelType });
+        if(resp.status===201){
+            navigate('/channels')
+        }else {
+            const error = resp.json as ProblemModel;
+            setErrorTitle(error.title );
+            setErrorDetails(error.detail );
+            setErrorPopupOpen(true);
+        }
     };
 
     return (
@@ -73,6 +83,14 @@ const CreateChannelPage: React.FC = () => {
                     </Button>
                 </Box>
             </Box>
+
+            {/* ErrorPopup Component */}
+            <ErrorPopup
+                open={errorPopupOpen}
+                title={errorTitle}
+                details={errorDetails}
+                onClose={() => setErrorPopupOpen(false)}
+            />
         </Box>
     );
 };
