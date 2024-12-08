@@ -1,6 +1,5 @@
 package com.example.messagingapp.http
 
-import Uris
 import com.example.messagingapp.TestClock
 import com.example.messagingapp.bootstrapUser
 import com.example.messagingapp.clearDatabase
@@ -42,7 +41,7 @@ class UserTests {
 
         // when: creating an user
         // then: the response is a 201
-        client.post().uri(Uris.Users.REGISTER)
+        client.post().uri(Uris.Users.BASE)
             .bodyValue(
                 mapOf(
                     "username" to "username",
@@ -55,7 +54,7 @@ class UserTests {
 
         // when: creating a user with the same invitation token
         // then: the response is a 400
-        client.post().uri(Uris.Users.REGISTER)
+        client.post().uri(Uris.Users.BASE)
             .bodyValue(
                 mapOf(
                     "username" to "username2",
@@ -69,7 +68,7 @@ class UserTests {
         // when: creating a user with an unsafe password
         // then: the response is a 400
 
-        client.post().uri(Uris.Users.REGISTER)
+        client.post().uri(Uris.Users.BASE)
             .bodyValue(
                 mapOf(
                     "username" to "username4",
@@ -83,7 +82,7 @@ class UserTests {
         // when: creating a user with an invalid username
         // then: the response is a 400
 
-        client.post().uri(Uris.Users.REGISTER)
+        client.post().uri(Uris.Users.BASE)
             .bodyValue(
                 mapOf(
                     "username" to "",
@@ -213,7 +212,7 @@ class UserTests {
 
         // when: registering a user with the invitation code
         // then: the response is a 201
-        client.post().uri(Uris.Users.REGISTER)
+        client.post().uri(Uris.Users.BASE)
             .bodyValue(
                 mapOf(
                     "username" to "username",

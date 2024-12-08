@@ -1,27 +1,70 @@
+package com.example.messagingapp.http
+
+import org.springframework.web.util.UriTemplate
+import java.net.URI
+
 object Uris {
     const val PREFIX = "/api"
 
     object Users {
-        const val REGISTER = "$PREFIX/users"
-        const val LOGIN = "$PREFIX/login"
-        const val LOGOUT = "$PREFIX/logout"
-        const val INVITE = "$PREFIX/invite"
-        const val HOME = "$PREFIX/me"
+        const val BASE = "$PREFIX/users"
+        const val LOGIN = "$BASE/login"
+        const val LOGOUT = "$BASE/logout"
+        const val INVITE = "$BASE/invite"
+        const val HOME = "$BASE/me"
+
+        fun register() = URI(BASE)
+
+        fun login() = URI(LOGIN)
+
+        fun logout() = URI(LOGOUT)
     }
 
     object Channels {
-        const val CREATE = "$PREFIX/channel"
-        const val LIST_JOINED_CHANNELS = "$PREFIX/channel"
-        const val SEARCH_CHANNELS = "$PREFIX/channel/search"
-        const val JOIN_CHANNEL = "$PREFIX/channel/{id}/join"
-        const val GET_BY_ID = "$PREFIX/channel/{id}/settings"
-        const val LIST_MESSAGES = "$PREFIX/channel/{id}"
-        const val SEND_MESSAGE = "$PREFIX/channel/{id}"
-        const val LIST_INVITATIONS = "$PREFIX/channel/invitations"
-        const val ACCEPT_INVITATION = "$PREFIX/channel/invitations/{id}/accept"
-        const val DECLINE_INVITATION = "$PREFIX/channel/invitations/{id}/decline"
-        const val INVITE_MEMBER = "$PREFIX/channel/{id}/memberships"
-        const val LEAVE_CHANNEL = "$PREFIX/channel/{id}/memberships"
-        const val LISTEN_CHANNELS = "$PREFIX/channel/listen"
+        const val BASE = "$PREFIX/channel"
+        const val SEARCH = "$BASE/search"
+        const val JOIN = "$BASE/{id}/join"
+        const val GET_BY_ID = "$BASE/{id}/settings"
+        const val MESSAGES = "$BASE/{id}"
+        const val INVITATIONS = "$BASE/invitations"
+        const val ACCEPT_INVITATION = "$BASE/invitations/{id}/accept"
+        const val DECLINE_INVITATION = "$BASE/invitations/{id}/decline"
+        const val MEMBERS = "$BASE/{id}/members"
+        const val LISTEN = "$BASE/listen"
+
+        fun create() = URI(BASE)
+
+        fun listJoinedChannels(
+            page: Int,
+            pageSize: Int,
+        ) = URI("$BASE?page={$page}&pageSize={$pageSize}")
+
+        fun searchChannels(
+            page: Int,
+            pageSize: Int,
+        ) = URI("$SEARCH?page={$page}&pageSize={$pageSize}")
+
+        fun joinChannel(id: Int) = UriTemplate(JOIN).expand(id)
+
+        fun getById(id: Int) = UriTemplate(GET_BY_ID).expand(id)
+
+        fun listMessages(id: Int) = UriTemplate(MESSAGES).expand(id)
+
+        fun sendMessage(id: Int) = UriTemplate(MESSAGES).expand(id)
+
+        fun listInvitations(
+            page: Int,
+            pageSize: Int,
+        ) = URI("$INVITATIONS?page={$page}&pageSize={$pageSize}")
+
+        fun acceptInvitation(id: Int) = UriTemplate(ACCEPT_INVITATION).expand(id)
+
+        fun declineInvitation(id: Int) = UriTemplate(DECLINE_INVITATION).expand(id)
+
+        fun inviteMember(id: Int) = UriTemplate(MEMBERS).expand(id)
+
+        fun leaveChannel(id: Int) = UriTemplate(MEMBERS).expand(id)
+
+        fun listenChannels() = URI(LISTEN)
     }
 }

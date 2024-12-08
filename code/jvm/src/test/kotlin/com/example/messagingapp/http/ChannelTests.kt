@@ -1,6 +1,5 @@
 package com.example.messagingapp.http
 
-import Uris
 import com.example.messagingapp.TestClock
 import com.example.messagingapp.bootstrapChannel
 import com.example.messagingapp.bootstrapUser
@@ -41,7 +40,7 @@ class ChannelTests {
 
         // when: creating a channel logged in
         // then: the response is a 201
-        client.post().uri(Uris.Channels.CREATE)
+        client.post().uri(Uris.Channels.BASE)
             .header("Authorization", "Bearer $token")
             .bodyValue(
                 mapOf(
@@ -54,7 +53,7 @@ class ChannelTests {
 
         // when: creating a channel without being logged in
         // then: the response is a 401
-        client.post().uri(Uris.Channels.CREATE)
+        client.post().uri(Uris.Channels.BASE)
             .bodyValue(
                 mapOf(
                     "channelName" to "channelName2",
@@ -66,7 +65,7 @@ class ChannelTests {
 
         // when: creating a channel with existing channel name
         // then: the response is a 400
-        client.post().uri(Uris.Channels.CREATE)
+        client.post().uri(Uris.Channels.BASE)
             .header("Authorization", "Bearer $token")
             .bodyValue(
                 mapOf(
@@ -79,7 +78,7 @@ class ChannelTests {
 
         // when: creating a channel with invalid channel name
         // then: the response is a 400
-        client.post().uri(Uris.Channels.CREATE)
+        client.post().uri(Uris.Channels.BASE)
             .header("Authorization", "Bearer $token")
             .bodyValue(
                 mapOf(
@@ -132,7 +131,7 @@ class ChannelTests {
 
         // when: getting joined channels without joining any
         // then: the response is a 200
-        client.get().uri(Uris.Channels.LIST_JOINED_CHANNELS)
+        client.get().uri(Uris.Channels.BASE)
             .header("Authorization", "Bearer $token")
             .exchange()
             .expectStatus().isOk
@@ -142,7 +141,7 @@ class ChannelTests {
 
         // when: getting joined channels after joining one
         // then: the response is a 200
-        client.get().uri(Uris.Channels.LIST_JOINED_CHANNELS)
+        client.get().uri(Uris.Channels.BASE)
             .header("Authorization", "Bearer $token")
             .exchange()
             .expectStatus().isOk
@@ -150,20 +149,20 @@ class ChannelTests {
 
         // when: getting joined channels without being logged in
         // then: the response is a 401
-        client.get().uri(Uris.Channels.LIST_JOINED_CHANNELS)
+        client.get().uri(Uris.Channels.BASE)
             .exchange()
             .expectStatus().isUnauthorized
 
         // when getting joined channels with invalid page
         // then: the response is a 400
-        client.get().uri(Uris.Channels.LIST_JOINED_CHANNELS + "?page=-1")
+        client.get().uri(Uris.Channels.BASE + "?page=-1")
             .header("Authorization", "Bearer $token")
             .exchange()
             .expectStatus().isBadRequest
 
         // when getting joined channels with invalid page size
         // then: the response is a 400
-        client.get().uri(Uris.Channels.LIST_JOINED_CHANNELS + "?pageSize=0")
+        client.get().uri(Uris.Channels.BASE + "?pageSize=0")
             .header("Authorization", "Bearer $token")
             .exchange()
             .expectStatus().isBadRequest
@@ -182,7 +181,7 @@ class ChannelTests {
 
         // when: joining a channel
         // then: the response is a 201
-        client.post().uri(Uris.Channels.JOIN_CHANNEL, channelId)
+        client.post().uri(Uris.Channels.JOIN, channelId)
             .header("Authorization", "Bearer $token")
             .exchange()
             .expectStatus().isOk
@@ -195,20 +194,20 @@ class ChannelTests {
 
         // when: joining a channel without being logged in
         // then: the response is a 401
-        client.post().uri(Uris.Channels.JOIN_CHANNEL, channelId)
+        client.post().uri(Uris.Channels.JOIN, channelId)
             .exchange()
             .expectStatus().isUnauthorized
 
         // when: joining a channel user is already a member of
         // then: the response is a 409
-        client.post().uri(Uris.Channels.JOIN_CHANNEL, channelId)
+        client.post().uri(Uris.Channels.JOIN, channelId)
             .header("Authorization", "Bearer $token")
             .exchange()
             .expectStatus().isEqualTo(HttpStatus.CONFLICT)
 
         // when: joining a channel that does not exist
         // then: the response is a 404
-        client.post().uri(Uris.Channels.JOIN_CHANNEL, Int.MAX_VALUE)
+        client.post().uri(Uris.Channels.JOIN, Int.MAX_VALUE)
             .header("Authorization", "Bearer $token")
             .exchange()
             .expectStatus().isNotFound
@@ -221,7 +220,7 @@ class ChannelTests {
 
         val otherChannelId = bootstrapChannel(otherUserId, isPublic = false)
 
-        client.post().uri(Uris.Channels.JOIN_CHANNEL, otherChannelId)
+        client.post().uri(Uris.Channels.JOIN, otherChannelId)
             .header("Authorization", "Bearer $otherToken")
             .exchange()
             .expectStatus().isForbidden
@@ -237,7 +236,7 @@ class ChannelTests {
 
         // when: searching for channels without any
         // then: the response is a 200
-        client.get().uri(Uris.Channels.SEARCH_CHANNELS)
+        client.get().uri(Uris.Channels.SEARCH)
             .header("Authorization", "Bearer $token")
             .exchange()
             .expectStatus().isOk
@@ -248,7 +247,7 @@ class ChannelTests {
 
         // when: searching for channels after creating one
         // then: the response is a 200
-        client.get().uri(Uris.Channels.SEARCH_CHANNELS)
+        client.get().uri(Uris.Channels.SEARCH)
             .header("Authorization", "Bearer $token")
             .exchange()
             .expectStatus().isOk
@@ -256,20 +255,20 @@ class ChannelTests {
 
         // when: searching for channels without being logged in
         // then: the response is a 401
-        client.get().uri(Uris.Channels.SEARCH_CHANNELS)
+        client.get().uri(Uris.Channels.SEARCH)
             .exchange()
             .expectStatus().isUnauthorized
 
         // when searching for channels with invalid page
         // then: the response is a 400
-        client.get().uri(Uris.Channels.SEARCH_CHANNELS + "?page=-1")
+        client.get().uri(Uris.Channels.SEARCH + "?page=-1")
             .header("Authorization", "Bearer $token")
             .exchange()
             .expectStatus().isBadRequest
 
         // when searching for channels with invalid page size
         // then: the response is a 400
-        client.get().uri(Uris.Channels.SEARCH_CHANNELS + "?pageSize=0")
+        client.get().uri(Uris.Channels.SEARCH + "?pageSize=0")
             .header("Authorization", "Bearer $token")
             .exchange()
             .expectStatus().isBadRequest
@@ -288,7 +287,7 @@ class ChannelTests {
 
         // when: listing messages without any
         // then: the response is a 200
-        client.get().uri(Uris.Channels.LIST_MESSAGES, channelId)
+        client.get().uri(Uris.Channels.MESSAGES, channelId)
             .header("Authorization", "Bearer $token")
             .exchange()
             .expectStatus().isOk
@@ -297,20 +296,20 @@ class ChannelTests {
         // when: listing messages without being logged in
         // then: the response is a 401
 
-        client.get().uri(Uris.Channels.LIST_MESSAGES, channelId)
+        client.get().uri(Uris.Channels.MESSAGES, channelId)
             .exchange()
             .expectStatus().isUnauthorized
 
         // when: listing messages from a channel that does not exist
         // then: the response is a 404
-        client.get().uri(Uris.Channels.LIST_MESSAGES, Int.MAX_VALUE)
+        client.get().uri(Uris.Channels.MESSAGES, Int.MAX_VALUE)
             .header("Authorization", "Bearer $token")
             .exchange()
             .expectStatus().isNotFound
 
         // when: listing messages from a channel that user is not a member of
         // then: the response is a 403
-        client.get().uri(Uris.Channels.LIST_MESSAGES, channelId)
+        client.get().uri(Uris.Channels.MESSAGES, channelId)
             .header("Authorization", "Bearer $otherToken")
             .exchange()
             .expectStatus().isForbidden
@@ -329,7 +328,7 @@ class ChannelTests {
 
         // when: sending a message
         // then: the response is a 201
-        client.post().uri(Uris.Channels.SEND_MESSAGE, channelId)
+        client.post().uri(Uris.Channels.MESSAGES, channelId)
             .header("Authorization", "Bearer $token")
             .bodyValue(
                 mapOf(
@@ -341,7 +340,7 @@ class ChannelTests {
 
         // when: sending a message without being logged in
         // then: the response is a 401
-        client.post().uri(Uris.Channels.SEND_MESSAGE, channelId)
+        client.post().uri(Uris.Channels.MESSAGES, channelId)
             .bodyValue(
                 mapOf(
                     "content" to "message123",
@@ -352,7 +351,7 @@ class ChannelTests {
 
         // when: sending a message to a channel that does not exist
         // then: the response is a 404
-        client.post().uri(Uris.Channels.SEND_MESSAGE, Int.MAX_VALUE)
+        client.post().uri(Uris.Channels.MESSAGES, Int.MAX_VALUE)
             .header("Authorization", "Bearer $token")
             .bodyValue(
                 mapOf(
@@ -364,7 +363,7 @@ class ChannelTests {
 
         // when: sending a message to a channel that user is not a member of
         // then: the response is a 403
-        client.post().uri(Uris.Channels.SEND_MESSAGE, channelId)
+        client.post().uri(Uris.Channels.MESSAGES, channelId)
             .header("Authorization", "Bearer $otherToken")
             .bodyValue(
                 mapOf(
@@ -381,7 +380,7 @@ class ChannelTests {
             it.channelsRepository.createMembership(userId2, channelId, clock, MembershipRole.VIEWER.role)
         }
 
-        client.post().uri(Uris.Channels.SEND_MESSAGE, channelId)
+        client.post().uri(Uris.Channels.MESSAGES, channelId)
             .header("Authorization", "Bearer $token")
             .bodyValue(
                 mapOf(
@@ -400,7 +399,7 @@ class ChannelTests {
 
         // when: listing invitations without any
         // then: the response is a 200
-        client.get().uri(Uris.Channels.LIST_INVITATIONS)
+        client.get().uri(Uris.Channels.INVITATIONS)
             .header("Authorization", "Bearer $token")
             .exchange()
             .expectStatus().isOk
@@ -408,20 +407,20 @@ class ChannelTests {
 
         // when: listing invitations without being logged in
         // then: the response is a 401
-        client.get().uri(Uris.Channels.LIST_INVITATIONS)
+        client.get().uri(Uris.Channels.INVITATIONS)
             .exchange()
             .expectStatus().isUnauthorized
 
         // when listing invitations with invalid page
         // then: the response is a 400
-        client.get().uri(Uris.Channels.LIST_INVITATIONS + "?page=-1")
+        client.get().uri(Uris.Channels.INVITATIONS + "?page=-1")
             .header("Authorization", "Bearer $token")
             .exchange()
             .expectStatus().isBadRequest
 
         // when listing invitations with invalid page size
         // then: the response is a 400
-        client.get().uri(Uris.Channels.LIST_INVITATIONS + "?pageSize=0")
+        client.get().uri(Uris.Channels.INVITATIONS + "?pageSize=0")
             .header("Authorization", "Bearer $token")
             .exchange()
             .expectStatus().isBadRequest
@@ -441,7 +440,7 @@ class ChannelTests {
 
         // when: inviting a user
         // then: the response is a 201
-        client.post().uri(Uris.Channels.INVITE_MEMBER, channelId)
+        client.post().uri(Uris.Channels.MEMBERS, channelId)
             .header("Authorization", "Bearer $token")
             .bodyValue(
                 mapOf(
@@ -487,7 +486,7 @@ class ChannelTests {
 
         // when: inviting a user
         // then: the response is a 201
-        client.post().uri(Uris.Channels.INVITE_MEMBER, channelId)
+        client.post().uri(Uris.Channels.MEMBERS, channelId)
             .header("Authorization", "Bearer $token")
             .bodyValue(
                 mapOf(
@@ -534,7 +533,7 @@ class ChannelTests {
 
         // when: inviting a user
         // then: the response is a 201
-        client.post().uri(Uris.Channels.INVITE_MEMBER, channelId)
+        client.post().uri(Uris.Channels.MEMBERS, channelId)
             .header("Authorization", "Bearer $token")
             .bodyValue(
                 mapOf(
@@ -547,7 +546,7 @@ class ChannelTests {
 
         // when: inviting a user without being logged in
         // then: the response is a 401
-        client.post().uri(Uris.Channels.INVITE_MEMBER, channelId)
+        client.post().uri(Uris.Channels.MEMBERS, channelId)
             .bodyValue(
                 mapOf(
                     "username" to inviteeUsername,
@@ -559,7 +558,7 @@ class ChannelTests {
 
         // when: inviting a user to a channel that does not exist
         // then: the response is a 404
-        client.post().uri(Uris.Channels.INVITE_MEMBER, Int.MAX_VALUE)
+        client.post().uri(Uris.Channels.MEMBERS, Int.MAX_VALUE)
             .header("Authorization", "Bearer $token")
             .bodyValue(
                 mapOf(
@@ -572,7 +571,7 @@ class ChannelTests {
 
         // when: inviting a user to a channel that user is not a member of
         // then: the response is a 401
-        client.post().uri(Uris.Channels.INVITE_MEMBER, channelId)
+        client.post().uri(Uris.Channels.MEMBERS, channelId)
             .header("Authorization", "Bearer $otherToken")
             .bodyValue(
                 mapOf(
@@ -585,7 +584,7 @@ class ChannelTests {
 
         // when: inviting a user that does not exist
         // then: the response is a 404
-        client.post().uri(Uris.Channels.INVITE_MEMBER, channelId)
+        client.post().uri(Uris.Channels.MEMBERS, channelId)
             .header("Authorization", "Bearer $token")
             .bodyValue(
                 mapOf(
@@ -598,7 +597,7 @@ class ChannelTests {
 
         // when: inviting a user that is already a member
         // then: the response is a 409
-        client.post().uri(Uris.Channels.INVITE_MEMBER, channelId)
+        client.post().uri(Uris.Channels.MEMBERS, channelId)
             .header("Authorization", "Bearer $token")
             .bodyValue(
                 mapOf(
@@ -627,34 +626,34 @@ class ChannelTests {
 
         // when: leaving a channel that user is the owner of
         // then: the response is a 403
-        client.delete().uri(Uris.Channels.LEAVE_CHANNEL, channelId)
+        client.delete().uri(Uris.Channels.MEMBERS, channelId)
             .header("Authorization", "Bearer $token")
             .exchange()
             .expectStatus().isForbidden
 
         // when: leaving a channel
         // then: the response is a 204
-        client.delete().uri(Uris.Channels.LEAVE_CHANNEL, channelId)
+        client.delete().uri(Uris.Channels.MEMBERS, channelId)
             .header("Authorization", "Bearer $otherToken")
             .exchange()
             .expectStatus().isNoContent
 
         // when: leaving a channel without being logged in
         // then: the response is a 401
-        client.delete().uri(Uris.Channels.LEAVE_CHANNEL, channelId)
+        client.delete().uri(Uris.Channels.MEMBERS, channelId)
             .exchange()
             .expectStatus().isUnauthorized
 
         // when: leaving a channel that does not exist
         // then: the response is a 404
-        client.delete().uri(Uris.Channels.LEAVE_CHANNEL, Int.MAX_VALUE)
+        client.delete().uri(Uris.Channels.MEMBERS, Int.MAX_VALUE)
             .header("Authorization", "Bearer $token")
             .exchange()
             .expectStatus().isNotFound
 
         // when: leaving a channel that user is not a member of
         // then: the response is a 403
-        client.delete().uri(Uris.Channels.LEAVE_CHANNEL, channelId)
+        client.delete().uri(Uris.Channels.MEMBERS, channelId)
             .header("Authorization", "Bearer $otherToken")
             .exchange()
             .expectStatus().isForbidden

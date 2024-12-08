@@ -83,6 +83,7 @@ class JdbiChannelRepositoryTests {
 
             val channelId = channelsRepository.createChannel(channelName1, true, userId, clock)
             channelsRepository.createMembership(userId, channelId, clock, MembershipRole.OWNER.role)
+            channelsRepository.createMembership(userId2, channelId, clock, MembershipRole.MEMBER.role)
             val channelId2 = channelsRepository.createChannel(channelName2, false, userId, clock)
             channelsRepository.createMembership(userId, channelId2, clock, MembershipRole.OWNER.role)
             val channelId3 = channelsRepository.createChannel(channelName3, false, userId2, clock)

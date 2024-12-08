@@ -13,16 +13,14 @@ class UserDomain(
 ) {
     companion object {
         private const val ALLOWED_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+        private const val USERNAME_REGEX = "^[a-zA-Z0-9_]{3,64}\$"
         private const val PASSWORD_MINIMUM_LENGTH = 8
         private const val PASSWORD_REGEX = "^(?=.*[A-Za-z])(?=.*\\d)[A-Za-z\\d@\$!%*?&]{$PASSWORD_MINIMUM_LENGTH,}\$"
-
-        // https://www.rfc-editor.org/rfc/rfc5321#section-4.5.3
-        private val USERNAME_LENGTH_RANGE = 3..64
     }
 
     val maxTokensPerUser: Int = config.maxTokensPerUser
 
-    fun isValidUsername(username: String): Boolean = username.length in USERNAME_LENGTH_RANGE
+    fun isValidUsername(username: String): Boolean = USERNAME_REGEX.toRegex().matches(username)
 
     fun hashPassword(password: String): Password = Password(passwordEncoder.encode(password))
 

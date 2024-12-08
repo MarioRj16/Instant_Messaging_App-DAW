@@ -1,3 +1,5 @@
+import org.springframework.boot.gradle.tasks.run.BootRun
+
 plugins {
     kotlin("jvm") version "1.9.25"
     kotlin("plugin.spring") version "1.9.25"
@@ -24,12 +26,16 @@ dependencies {
 
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.14.2")
 
+    // SpringDoc OpenAPI
+    implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:2.2.0")
+
     // JDBI
     implementation("org.jdbi:jdbi3-core:3.37.1")
     implementation("org.jdbi:jdbi3-kotlin:3.37.1")
     implementation("org.jdbi:jdbi3-postgres:3.37.1")
     implementation("org.postgresql:postgresql:42.7.2")
 
+    // Kotlinx DateTime
     implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.4.1")
 
     // Spring Security
@@ -74,5 +80,10 @@ task<Exec>("stopDB") {
 
 tasks.named("check") {
     dependsOn("waitForDB")
+    finalizedBy("stopDB")
+}
+
+tasks.named<BootRun>("bootRun") {
+    dependsOn("startDB")
     finalizedBy("stopDB")
 }
