@@ -566,6 +566,23 @@ class ChannelsServiceTests {
     }
 
     @Test
+    fun `Cannot invite to user to channel twice`() {
+        val testClock = TestClock()
+        val inviteeName = "invitee"
+        val inviterId = bootstrapUser(testClock = testClock)
+        bootstrapUser(inviteeName, testClock = testClock)
+        val channelId = bootstrapChannel(ownerId = inviterId, clock = testClock)
+        val channelsService = createChannelsService(testClock)
+
+        channelsService.createChannelInvitation(channelId, inviterId, inviteeName, MembershipRole.MEMBER)
+
+        when (val invitationResult = channelsService.createChannelInvitation(channelId, inviterId, inviteeName, MembershipRole.MEMBER)) {
+            is Either.Left -> assertIs<InviteMemberError.InvitationAlreadyExists>(invitationResult.value)
+            is Either.Right -> throw AssertionError("Invitation failed: ${invitationResult.value}")
+        }
+    }
+
+    @Test
     fun `Cannot invite user to channel if channel is not found`() {
         val testClock = TestClock()
         val inviteeName = "invitee"

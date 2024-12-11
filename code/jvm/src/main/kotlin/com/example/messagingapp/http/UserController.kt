@@ -9,6 +9,12 @@ import com.example.messagingapp.http.model.output.LoginOutputModel
 import com.example.messagingapp.http.model.output.Problem
 import com.example.messagingapp.http.model.output.RegistrationInvitationCreateOutputModel
 import com.example.messagingapp.http.model.output.UserOutputModel
+import com.example.messagingapp.http.model.output.problems.InternalServerError
+import com.example.messagingapp.http.model.output.problems.InvitationCodeNotValid
+import com.example.messagingapp.http.model.output.problems.PasswordNotSafe
+import com.example.messagingapp.http.model.output.problems.UserOrPasswordInvalid
+import com.example.messagingapp.http.model.output.problems.UsernameAlreadyExists
+import com.example.messagingapp.http.model.output.problems.UsernameNotValid
 import com.example.messagingapp.services.TokenCreationError
 import com.example.messagingapp.services.UserCreationError
 import com.example.messagingapp.services.UsersService
@@ -16,7 +22,9 @@ import com.example.messagingapp.utils.Failure
 import com.example.messagingapp.utils.Success
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.tags.Tag
+import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpStatus
+import org.springframework.http.ResponseCookie
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PostMapping
@@ -50,22 +58,22 @@ class UserController(
                     UserCreationError.InvitationCodeNotValid ->
                         Problem.response(
                             HttpStatus.BAD_REQUEST.value(),
-                            Problem.invitationCodeNotValid(input.invitationCode, Uris.Users.register()),
+                            InvitationCodeNotValid(input.invitationCode, Uris.Users.register())
                         )
                     UserCreationError.UsernameAlreadyExists ->
                         Problem.response(
                             HttpStatus.BAD_REQUEST.value(),
-                            Problem.usernameAlreadyExists(input.username, Uris.Users.register()),
+                            UsernameAlreadyExists(input.username, Uris.Users.register())
                         )
                     UserCreationError.UsernameIsNotValid ->
                         Problem.response(
                             HttpStatus.BAD_REQUEST.value(),
-                            Problem.usernameNotValid(input.username, Uris.Users.register()),
+                            UsernameNotValid(input.username, Uris.Users.register())
                         )
                     UserCreationError.PasswordIsNotSafe ->
                         Problem.response(
                             HttpStatus.BAD_REQUEST.value(),
-                            Problem.passwordNotSafe(Uris.Users.register()),
+                            PasswordNotSafe(Uris.Users.register()),
                         )
                 }
         }
@@ -80,13 +88,25 @@ class UserController(
         @RequestBody user: LoginInputModel,
     ): ResponseEntity<*> =
         when (val res = userService.createToken(user.username, user.password)) {
-            is Success -> ResponseEntity(LoginOutputModel(res.value), HttpStatus.OK)
+            is Success -> {
+                val tokenCookie = ResponseCookie.from("authToken", res.value.token.value.toString())
+                    .httpOnly(true)
+                    .secure(true)
+                    .path("/")
+                    .sameSite("Strict")
+                    .build()
+
+                ResponseEntity
+                    .ok()
+                    .header(HttpHeaders.SET_COOKIE, tokenCookie.toString())
+                    .body(LoginOutputModel(res.value))
+            }
             is Failure ->
                 when (res.value) {
                     TokenCreationError.UserOrPasswordIsInvalid ->
                         Problem.response(
                             HttpStatus.UNAUTHORIZED.value(),
-                            Problem.userOrPasswordInvalid(Uris.Users.login()),
+                            UserOrPasswordInvalid(Uris.Users.login()),
                         )
                 }
         }
@@ -103,7 +123,7 @@ class UserController(
         } catch (e: Exception) {
             Problem.response(
                 HttpStatus.INTERNAL_SERVER_ERROR.value(),
-                Problem.internalServerError(e.message ?: "Unknown Error", Uris.Users.logout()),
+                InternalServerError(instance = Uris.Users.logout()),
             )
         }
     }

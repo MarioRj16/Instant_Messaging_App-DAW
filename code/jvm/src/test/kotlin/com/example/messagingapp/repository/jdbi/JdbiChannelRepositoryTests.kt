@@ -15,6 +15,7 @@ import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Test
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
+import kotlin.time.Duration.Companion.minutes
 
 class JdbiChannelRepositoryTests {
     @AfterEach
@@ -132,6 +133,31 @@ class JdbiChannelRepositoryTests {
             assertEquals(1, messages.size)
             assertEquals(content, messages[0].content)
             assertEquals(userId, messages[0].sender.userId)
+        }
+    }
+
+    @Test
+    fun `Messages are sorted by timestamp`() {
+        runWithHandle {
+            val repo = JdbiChannelsRepository(it)
+            val userRepo = JdbiUsersRepository(it)
+            val channelName = "channel"
+            val userId = bootstrapUser(userRepo)
+            val channelId = bootstrapChannel(userId, channelName)
+            val content = "messageContent"
+            val clock = TestClock()
+            repo.createMessage(channelId, userId, content, clock)
+            clock.advance(1.minutes)
+            repo.createMessage(channelId, userId, content, clock)
+            clock.advance(1.minutes)
+            repo.createMessage(channelId, userId, content, clock)
+
+            val messages = repo.listMessages(channelId)
+
+            assertEquals(3, messages.size)
+            assertEquals(clock.now().minus(2.minutes), messages[0].createdAt)
+            assertEquals(clock.now().minus(1.minutes), messages[1].createdAt)
+            assertEquals(clock.now(), messages[2].createdAt)
         }
     }
 

@@ -1,6 +1,7 @@
 package com.example.messagingapp.http
 
 import com.example.messagingapp.http.model.output.Problem
+import com.example.messagingapp.http.model.output.problems.InvalidPagination
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.ControllerAdvice
@@ -14,7 +15,7 @@ class GlobalExceptionHandler {
     fun handleInvalidPagination(exception: InvalidPaginationException): ResponseEntity<*> {
         return Problem.response(
             HttpStatus.BAD_REQUEST.value(),
-            Problem.invalidPagination(Problem.INVALID_PAGINATION),
+            InvalidPagination(Problem.INVALID_PAGINATION),
         )
     }
 }

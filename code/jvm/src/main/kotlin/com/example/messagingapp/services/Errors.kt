@@ -116,6 +116,8 @@ sealed class InviteMemberError(val message: String) {
     data object MembershipAlreadyExists : InviteMemberError("Membership already exists for the invitee")
 
     data object ForbiddenRole : InviteMemberError("User is not allowed to invite a user with a higher role")
+
+    data object InvitationAlreadyExists : InviteMemberError("Invitation already exists for the invitee")
 }
 
 typealias InviteMemberResult = Either<InviteMemberError, Int>

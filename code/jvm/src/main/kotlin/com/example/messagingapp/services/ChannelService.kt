@@ -253,6 +253,13 @@ class ChannelService(
                 return@run failure(error)
             }
 
+            val invitation = it.channelsRepository.getInvitation(channelId, invitedUser.userId)
+            if (invitation != null) {
+                val error = InviteMemberError.InvitationAlreadyExists
+                logger.error(error.message)
+                return@run failure(error)
+            }
+
             val membership = it.channelsRepository.getMembership(channelId, userId)
             if (membership == null) {
                 val error = InviteMemberError.MembershipNotFound

@@ -525,11 +525,13 @@ class ChannelTests {
         val ownerUsername = "owner"
         val userId = bootstrapUser(username = ownerUsername, testClock = clock)
         val inviteeUsername = "username"
-        val otherUserId = bootstrapUser(username = inviteeUsername, testClock = clock)
+        val userId2 = bootstrapUser(username = inviteeUsername, testClock = clock)
+        val inviteeUsername2 = "username2"
+        bootstrapUser(username = inviteeUsername2, testClock = clock)
         val channelId = bootstrapChannel(userId)
 
         val token = generateToken(userId, clock)
-        val otherToken = generateToken(otherUserId, clock)
+        val token2 = generateToken(userId2, clock)
 
         // when: inviting a user
         // then: the response is a 201
@@ -543,6 +545,9 @@ class ChannelTests {
             )
             .exchange()
             .expectStatus().isCreated
+
+        // cleanup
+        deleteInvitation(channelId, userId2)
 
         // when: inviting a user without being logged in
         // then: the response is a 401
@@ -569,14 +574,14 @@ class ChannelTests {
             .exchange()
             .expectStatus().isNotFound
 
-        // when: inviting a user to a channel that user is not a member of
+        // when: inviting a user to a channel that inviter is not a member of
         // then: the response is a 401
         client.post().uri(Uris.Channels.MEMBERS, channelId)
-            .header("Authorization", "Bearer $otherToken")
+            .header("Authorization", "Bearer $token2")
             .bodyValue(
                 mapOf(
-                    "username" to inviteeUsername,
-                    "role" to MembershipRole.MEMBER.role,
+                    "username" to inviteeUsername2,
+                    "role" to MembershipRole.VIEWER.role,
                 ),
             )
             .exchange()
@@ -595,6 +600,7 @@ class ChannelTests {
             .exchange()
             .expectStatus().isNotFound
 
+
         // when: inviting a user that is already a member
         // then: the response is a 409
         client.post().uri(Uris.Channels.MEMBERS, channelId)
@@ -602,6 +608,26 @@ class ChannelTests {
             .bodyValue(
                 mapOf(
                     "username" to ownerUsername,
+                    "role" to MembershipRole.MEMBER.role,
+                ),
+            )
+            .exchange()
+            .expectStatus().isEqualTo(HttpStatus.CONFLICT)
+
+
+        // when: inviting a user twice
+        // then: the response is a 409
+        transactionManager.run {
+            it.channelsRepository.createChannelInvitation(
+                channelId, userId, userId2, MembershipRole.VIEWER.role, clock
+            )
+        }
+
+        client.post().uri(Uris.Channels.MEMBERS, channelId)
+            .header("Authorization", "Bearer $token")
+            .bodyValue(
+                mapOf(
+                    "username" to inviteeUsername,
                     "role" to MembershipRole.MEMBER.role,
                 ),
             )
@@ -657,5 +683,12 @@ class ChannelTests {
             .header("Authorization", "Bearer $otherToken")
             .exchange()
             .expectStatus().isForbidden
+    }
+
+    private fun deleteInvitation(channelId: Int, userId: Int) {
+        transactionManager.run {
+            val invitationId = it.channelsRepository.getInvitation(channelId, userId) ?: throw AssertionError()
+            it.channelsRepository.deleteInvitation(invitationId.channelInvitationId)
+        }
     }
 }

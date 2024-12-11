@@ -11,14 +11,46 @@ import com.example.messagingapp.domain.MembershipRole
 import com.example.messagingapp.http.model.input.ChannelSearchInputModel
 import com.example.messagingapp.http.model.input.InvitationInputModel
 import com.example.messagingapp.http.model.input.MessageInputModel
-import com.example.messagingapp.http.model.output.*
 import com.example.messagingapp.http.model.output.ChannelCreateOutputModel
+import com.example.messagingapp.http.model.output.ChannelListOutputModel
+import com.example.messagingapp.http.model.output.ChannelOutputModel
+import com.example.messagingapp.http.model.output.InvitationsListOutputModel
+import com.example.messagingapp.http.model.output.MessageListOutputModel
+import com.example.messagingapp.http.model.output.MessageOutputModel
 import com.example.messagingapp.http.model.output.Problem
-import com.example.messagingapp.services.*
+import com.example.messagingapp.http.model.output.UserOutputModel
+import com.example.messagingapp.http.model.output.problems.ChannelNameAlreadyExists
+import com.example.messagingapp.http.model.output.problems.ChannelNotFound
+import com.example.messagingapp.http.model.output.problems.ChannelNotPublic
+import com.example.messagingapp.http.model.output.problems.ForbiddenRole
+import com.example.messagingapp.http.model.output.problems.InternalServerError
+import com.example.messagingapp.http.model.output.problems.InvalidChannelName
+import com.example.messagingapp.http.model.output.problems.InvalidPagination
+import com.example.messagingapp.http.model.output.problems.InvitationAlreadyExists
+import com.example.messagingapp.http.model.output.problems.InvitationNotFound
+import com.example.messagingapp.http.model.output.problems.InviteeNotFound
+import com.example.messagingapp.http.model.output.problems.UserAlreadyInChannel
+import com.example.messagingapp.http.model.output.problems.UserIsOwner
+import com.example.messagingapp.http.model.output.problems.UserNotAuthorizedToWrite
+import com.example.messagingapp.http.model.output.problems.UserNotInChannel
+import com.example.messagingapp.services.AcceptChannelInvitationError
+import com.example.messagingapp.services.ChannelCreationError
+import com.example.messagingapp.services.ChannelGetError
+import com.example.messagingapp.services.ChannelService
+import com.example.messagingapp.services.CreateMessageError
+import com.example.messagingapp.services.DeclineChannelInvitationError
+import com.example.messagingapp.services.DeleteMembershipError
+import com.example.messagingapp.services.GetMessagesError
+import com.example.messagingapp.services.InviteMemberError
+import com.example.messagingapp.services.JoinChannelError
 import com.example.messagingapp.utils.Failure
 import com.example.messagingapp.utils.Success
 import io.swagger.v3.oas.annotations.Operation
+import io.swagger.v3.oas.annotations.media.Content
+import io.swagger.v3.oas.annotations.media.Schema
+import io.swagger.v3.oas.annotations.responses.ApiResponse
 import io.swagger.v3.oas.annotations.tags.Tag
+import java.util.concurrent.ConcurrentHashMap
 import kotlinx.datetime.Clock
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
@@ -30,7 +62,6 @@ import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter
-import java.util.concurrent.ConcurrentHashMap
 
 @RestController
 @Tag(name = "Channels", description = "Operations related to channels")
@@ -42,7 +73,39 @@ class ChannelController(
     @PostMapping(Uris.Channels.BASE)
     @Operation(
         summary = "Create a new channel",
-        description = "Create a new channel with the given name and visibility."
+        description = "Create a new channel with the given name and visibility.",
+        responses = [
+            ApiResponse(
+                responseCode = "201",
+                description = "Channel created successfully.",
+                content = [
+                    Content(
+                        mediaType = "application/json",
+                        schema = Schema(implementation = ChannelCreateOutputModel::class,)
+                    ),
+                ],
+            ),
+            ApiResponse(
+                responseCode = "400",
+                description = "Invalid channel name.",
+                content = [
+                    Content(
+                        mediaType = "application/problem+json",
+                        schema = Schema(implementation = InvalidChannelName::class,)
+                    ),
+                ],
+            ),
+            ApiResponse(
+                responseCode = "400",
+                description = "Channel name already exists.",
+                content = [
+                    Content(
+                        mediaType = "application/problem+json",
+                        schema = Schema(implementation = ChannelNameAlreadyExists::class,)
+                    ),
+                ],
+            ),
+        ]
     )
     fun createChannel(
         @RequestBody channel: ChannelSearchInputModel,
@@ -64,12 +127,12 @@ class ChannelController(
                     ChannelCreationError.ChannelNameIsNotValid ->
                         Problem.response(
                             HttpStatus.BAD_REQUEST.value(),
-                            Problem.invalidChannelName(Uris.Channels.create()),
+                            InvalidChannelName(channel.channelName, Uris.Channels.create()),
                         )
                     ChannelCreationError.ChannelNameAlreadyExists ->
                         Problem.response(
                             HttpStatus.BAD_REQUEST.value(),
-                            Problem.channelNameAlreadyExists(channel.channelName, Uris.Channels.create()),
+                            ChannelNameAlreadyExists(channel.channelName, Uris.Channels.create()),
                         )
                 }
         }
@@ -148,7 +211,29 @@ class ChannelController(
     @GetMapping(Uris.Channels.GET_BY_ID)
     @Operation(
         summary = "Get a channel by ID",
-        description = "Get a channel by its ID."
+        description = "Get a channel by its ID.",
+        responses = [
+            ApiResponse(
+                responseCode = "200",
+                description = "Channel found.",
+                content = [
+                    Content(
+                        mediaType = "application/json",
+                        schema = Schema(implementation = ChannelOutputModel::class,)
+                    ),
+                ],
+            ),
+            ApiResponse(
+                responseCode = "404",
+                description = "Channel not found.",
+                content = [
+                    Content(
+                        mediaType = "application/problem+json",
+                        schema = Schema(implementation = ChannelNotFound::class,)
+                    ),
+                ],
+            ),
+        ]
     )
     fun getChannel(
         @PathVariable id: Int,
@@ -161,7 +246,7 @@ class ChannelController(
                     ChannelGetError.ChannelNotFound ->
                         Problem.response(
                             HttpStatus.NOT_FOUND.value(),
-                            Problem.channelNotFound(id, Uris.Channels.getById(id)),
+                            ChannelNotFound(Uris.Channels.getById(id)),
                         )
                 }
         }
@@ -169,7 +254,29 @@ class ChannelController(
     @GetMapping(Uris.Channels.BASE)
     @Operation(
         summary = "List all channels",
-        description = "List all channels the user is part of."
+        description = "List all channels the user is part of.",
+        responses = [
+            ApiResponse(
+                responseCode = "200",
+                description = "Channels found.",
+                content = [
+                    Content(
+                        mediaType = "application/json",
+                        schema = Schema(implementation = ChannelListOutputModel::class,)
+                    ),
+                ],
+            ),
+            ApiResponse(
+                responseCode = "400",
+                description = "Invalid page or page size.",
+                content = [
+                    Content(
+                        mediaType = "application/problem+json",
+                        schema = Schema(implementation = InvalidPagination::class,)
+                    ),
+                ],
+            )
+        ]
     )
     fun listJoinedChannels(
         user: AuthenticatedUser,
@@ -184,7 +291,29 @@ class ChannelController(
     @GetMapping(Uris.Channels.SEARCH)
     @Operation(
         summary = "Search for channels",
-        description = "Search for channels by name."
+        description = "Search for channels by name.",
+        responses = [
+            ApiResponse(
+                responseCode = "200",
+                description = "Channels found.",
+                content = [
+                    Content(
+                        mediaType = "application/json",
+                        schema = Schema(implementation = ChannelListOutputModel::class,)
+                    ),
+                ],
+            ),
+            ApiResponse(
+                responseCode = "400",
+                description = "Invalid page or page size.",
+                content = [
+                    Content(
+                        mediaType = "application/problem+json",
+                        schema = Schema(implementation = InvalidPagination::class,)
+                    ),
+                ],
+            )
+        ]
     )
     fun searchChannels(
         user: AuthenticatedUser,
@@ -200,7 +329,43 @@ class ChannelController(
     @PostMapping(Uris.Channels.JOIN)
     @Operation(
         summary = "Join a public channel",
-        description = "Join a public channel by its ID."
+        description = "Join a public channel by its ID.",
+        responses = [
+            ApiResponse(
+                responseCode = "200",
+                description = "Channel joined successfully.",
+            ),
+            ApiResponse(
+                responseCode = "404",
+                description = "Channel not found.",
+                content = [
+                    Content(
+                        mediaType = "application/problem+json",
+                        schema = Schema(implementation = ChannelNotFound::class,)
+                    ),
+                ],
+            ),
+            ApiResponse(
+                responseCode = "409",
+                description = "User is already a member of the channel.",
+                content = [
+                    Content(
+                        mediaType = "application/problem+json",
+                        schema = Schema(implementation = UserAlreadyInChannel::class,)
+                    ),
+                ],
+            ),
+            ApiResponse(
+                responseCode = "403",
+                description = "Channel is not public.",
+                content = [
+                    Content(
+                        mediaType = "application/problem+json",
+                        schema = Schema(implementation = ChannelNotPublic::class,)
+                    ),
+                ],
+            ),
+        ]
     )
     fun joinChannel(
         @PathVariable id: Int,
@@ -220,17 +385,17 @@ class ChannelController(
                     JoinChannelError.ChannelNotFound ->
                         Problem.response(
                             HttpStatus.NOT_FOUND.value(),
-                            Problem.channelNotPublic(id, Uris.Channels.getById(id)),
+                            ChannelNotPublic(Uris.Channels.joinChannel(id)),
                         )
                     JoinChannelError.UserIsAlreadyMember ->
                         Problem.response(
                             HttpStatus.CONFLICT.value(),
-                            Problem.userAlreadyInChannel(user.user.userId, id, Uris.Channels.getById(id)),
+                            UserAlreadyInChannel(Uris.Channels.joinChannel(id)),
                         )
                     JoinChannelError.ChannelIsNotPublic ->
                         Problem.response(
                             HttpStatus.FORBIDDEN.value(),
-                            Problem.channelNotPublic(id, Uris.Channels.getById(id)),
+                            ChannelNotPublic(Uris.Channels.joinChannel(id)),
                         )
                 }
         }
@@ -238,7 +403,39 @@ class ChannelController(
     @GetMapping(Uris.Channels.MESSAGES)
     @Operation(
         summary = "List messages",
-        description = "List messages in a channel."
+        description = "List messages in a channel.",
+        responses = [
+            ApiResponse(
+                responseCode = "200",
+                description = "Messages found.",
+                content = [
+                    Content(
+                        mediaType = "application/json",
+                        schema = Schema(implementation = MessageListOutputModel::class,)
+                    ),
+                ],
+            ),
+            ApiResponse(
+                responseCode = "404",
+                description = "Channel not found.",
+                content = [
+                    Content(
+                        mediaType = "application/problem+json",
+                        schema = Schema(implementation = ChannelNotFound::class,)
+                    ),
+                ],
+            ),
+            ApiResponse(
+                responseCode = "403",
+                description = "User is not a member of the channel.",
+                content = [
+                    Content(
+                        mediaType = "application/problem+json",
+                        schema = Schema(implementation = UserNotInChannel::class,)
+                    ),
+                ],
+            ),
+        ]
     )
     fun listMessages(
         @PathVariable id: Int,
@@ -251,12 +448,12 @@ class ChannelController(
                     GetMessagesError.ChannelNotFound ->
                         Problem.response(
                             HttpStatus.NOT_FOUND.value(),
-                            Problem.channelNotFound(id, Uris.Channels.getById(id)),
+                            ChannelNotFound(Uris.Channels.getById(id)),
                         )
                     GetMessagesError.UserIsNotMember ->
                         Problem.response(
                             HttpStatus.FORBIDDEN.value(),
-                            Problem.userNotInChannel(user.user.userId, id, Uris.Channels.getById(id)),
+                            UserNotInChannel(Uris.Channels.getById(id)),
                         )
                 }
         }
@@ -265,7 +462,43 @@ class ChannelController(
     @PostMapping(Uris.Channels.MESSAGES)
     @Operation(
         summary = "Send a message",
-        description = "Send a message to a channel."
+        description = "Send a message to a channel.",
+        responses = [
+            ApiResponse(
+                responseCode = "201",
+                description = "Message sent successfully.",
+            ),
+            ApiResponse(
+                responseCode = "404",
+                description = "Channel not found.",
+                content = [
+                    Content(
+                        mediaType = "application/problem+json",
+                        schema = Schema(implementation = ChannelNotFound::class,)
+                    ),
+                ],
+            ),
+            ApiResponse(
+                responseCode = "403",
+                description = "User is not authorized to write.",
+                content = [
+                    Content(
+                        mediaType = "application/problem+json",
+                        schema = Schema(implementation = UserNotAuthorizedToWrite::class,)
+                    ),
+                ],
+            ),
+            ApiResponse(
+                responseCode = "403",
+                description = "User is not a member of the channel.",
+                content = [
+                    Content(
+                        mediaType = "application/problem+json",
+                        schema = Schema(implementation = UserNotInChannel::class,)
+                    ),
+                ],
+            ),
+        ]
     )
     fun sendMessage(
         @PathVariable id: Int,
@@ -290,17 +523,17 @@ class ChannelController(
                     CreateMessageError.ChannelNotFound ->
                         Problem.response(
                             HttpStatus.NOT_FOUND.value(),
-                            Problem.channelNotFound(id, Uris.Channels.getById(id)),
+                            ChannelNotFound(Uris.Channels.getById(id)),
                         )
                     CreateMessageError.UserIsNotAuthorizedToWrite ->
                         Problem.response(
                             HttpStatus.FORBIDDEN.value(),
-                            Problem.userNotAuthorizedToWrite(user.user.userId, id, Uris.Channels.getById(id)),
+                            UserNotAuthorizedToWrite(Uris.Channels.getById(id)),
                         )
                     CreateMessageError.UserIsNotMember ->
                         Problem.response(
                             HttpStatus.FORBIDDEN.value(),
-                            Problem.userNotInChannel(user.user.userId, id, Uris.Channels.getById(id)),
+                            UserNotInChannel(Uris.Channels.getById(id)),
                         )
                 }
         }
@@ -308,7 +541,63 @@ class ChannelController(
     @PostMapping(Uris.Channels.MEMBERS)
     @Operation(
         summary = "Invite a member",
-        description = "Invite a member to a channel."
+        description = "Invite a member to a channel.",
+        responses = [
+            ApiResponse(
+                responseCode = "201",
+                description = "Member invited successfully.",
+            ),
+            ApiResponse(
+                responseCode = "404",
+                description = "Invitee not found.",
+                content = [
+                    Content(
+                        mediaType = "application/problem+json",
+                        schema = Schema(implementation = InviteeNotFound::class,)
+                    ),
+                ],
+            ),
+            ApiResponse(
+                responseCode = "404",
+                description = "Channel not found.",
+                content = [
+                    Content(
+                        mediaType = "application/problem+json",
+                        schema = Schema(implementation = ChannelNotFound::class,)
+                    ),
+                ],
+            ),
+            ApiResponse(
+                responseCode = "403",
+                description = "User is not a member of the channel.",
+                content = [
+                    Content(
+                        mediaType = "application/problem+json",
+                        schema = Schema(implementation = UserNotInChannel::class,)
+                    ),
+                ],
+            ),
+            ApiResponse(
+                responseCode = "403",
+                description = "User is not authorized to invite.",
+                content = [
+                    Content(
+                        mediaType = "application/problem+json",
+                        schema = Schema(implementation = ForbiddenRole::class,)
+                    ),
+                ],
+            ),
+            ApiResponse(
+                responseCode = "409",
+                description = "User is already a member of the channel.",
+                content = [
+                    Content(
+                        mediaType = "application/problem+json",
+                        schema = Schema(implementation = UserAlreadyInChannel::class,)
+                    ),
+                ],
+            ),
+        ]
     )
     fun inviteMember(
         @PathVariable id: Int,
@@ -331,34 +620,39 @@ class ChannelController(
                         InviteMemberError.InviteeNotFound ->
                             Problem.response(
                                 HttpStatus.NOT_FOUND.value(),
-                                Problem.inviteeNotFound(invitation.username, Uris.Channels.inviteMember(id)),
+                                InviteeNotFound(Uris.Channels.inviteMember(id)),
                             )
                         InviteMemberError.ChannelNotFound ->
                             Problem.response(
                                 HttpStatus.NOT_FOUND.value(),
-                                Problem.channelNotFound(id, Uris.Channels.inviteMember(id)),
+                                ChannelNotFound(Uris.Channels.inviteMember(id)),
                             )
                         InviteMemberError.MembershipNotFound ->
                             Problem.response(
                                 HttpStatus.UNAUTHORIZED.value(),
-                                Problem.membershipNotFound(user.user.userId, id, Uris.Channels.inviteMember(id)),
+                                UserNotInChannel(Uris.Channels.inviteMember(id)),
                             )
                         InviteMemberError.ForbiddenRole ->
                             Problem.response(
                                 HttpStatus.FORBIDDEN.value(),
-                                Problem.forbiddenRole(user.user.userId, id, Uris.Channels.inviteMember(id)),
+                                ForbiddenRole(Uris.Channels.inviteMember(id)),
                             )
                         InviteMemberError.MembershipAlreadyExists ->
                             Problem.response(
                                 HttpStatus.CONFLICT.value(),
-                                Problem.userAlreadyInChannel(user.user.userId, id, Uris.Channels.inviteMember(id)),
+                                UserAlreadyInChannel(Uris.Channels.inviteMember(id)),
+                            )
+                        InviteMemberError.InvitationAlreadyExists ->
+                            Problem.response(
+                                HttpStatus.CONFLICT.value(),
+                                InvitationAlreadyExists(Uris.Channels.inviteMember(id)),
                             )
                     }
             }
         } catch (e: Exception) {
             Problem.response(
                 HttpStatus.INTERNAL_SERVER_ERROR.value(),
-                Problem.internalServerError(e.message ?: "Unknown error", Uris.Channels.inviteMember(id)),
+                InternalServerError(instance = Uris.Channels.inviteMember(id)),
             )
         }
     }
@@ -366,7 +660,29 @@ class ChannelController(
     @GetMapping(Uris.Channels.INVITATIONS)
     @Operation(
         summary = "List invitations",
-        description = "List all invitations the user has received."
+        description = "List all invitations the user has received.",
+        responses = [
+            ApiResponse(
+                responseCode = "200",
+                description = "Invitations found.",
+                content = [
+                    Content(
+                        mediaType = "application/json",
+                        schema = Schema(implementation = InvitationsListOutputModel::class,)
+                    ),
+                ],
+            ),
+            ApiResponse(
+                responseCode = "400",
+                description = "Invalid page or page size.",
+                content = [
+                    Content(
+                        mediaType = "application/problem+json",
+                        schema = Schema(implementation = InvalidPagination::class,)
+                    ),
+                ],
+            )
+        ]
     )
     fun listInvitations(
         user: AuthenticatedUser,
@@ -381,7 +697,33 @@ class ChannelController(
     @PostMapping(Uris.Channels.ACCEPT_INVITATION)
     @Operation(
         summary = "Accept an invitation",
-        description = "Accept an invitation to a channel."
+        description = "Accept an invitation to a channel.",
+        responses = [
+            ApiResponse(
+                responseCode = "201",
+                description = "Invitation accepted successfully.",
+            ),
+            ApiResponse(
+                responseCode = "404",
+                description = "Invitation not found.",
+                content = [
+                    Content(
+                        mediaType = "application/problem+json",
+                        schema = Schema(implementation = InvitationNotFound::class,)
+                    ),
+                ],
+            ),
+            ApiResponse(
+                responseCode = "403",
+                description = "User is already a member of the channel.",
+                content = [
+                    Content(
+                        mediaType = "application/problem+json",
+                        schema = Schema(implementation = UserAlreadyInChannel::class,)
+                    ),
+                ],
+            ),
+        ]
     )
     fun acceptInvitation(
         @PathVariable id: Int,
@@ -402,12 +744,12 @@ class ChannelController(
                     AcceptChannelInvitationError.UserIsAlreadyMember ->
                         Problem.response(
                             HttpStatus.FORBIDDEN.value(),
-                            Problem.userAlreadyInChannel(user.user.userId, id, Uris.Channels.acceptInvitation(id)),
+                            UserAlreadyInChannel(Uris.Channels.acceptInvitation(id)),
                         )
                     AcceptChannelInvitationError.InvitationNotFound ->
                         Problem.response(
                             HttpStatus.NOT_FOUND.value(),
-                            Problem.invitationNotFound(id, Uris.Channels.acceptInvitation(id)),
+                            InvitationNotFound(Uris.Channels.acceptInvitation(id)),
                         )
                 }
         }
@@ -415,7 +757,33 @@ class ChannelController(
     @PostMapping(Uris.Channels.DECLINE_INVITATION)
     @Operation(
         summary = "Decline an invitation",
-        description = "Decline an invitation to a channel."
+        description = "Decline an invitation to a channel.",
+        responses = [
+            ApiResponse(
+                responseCode = "201",
+                description = "Invitation declined successfully.",
+            ),
+            ApiResponse(
+                responseCode = "404",
+                description = "Invitation not found.",
+                content = [
+                    Content(
+                        mediaType = "application/problem+json",
+                        schema = Schema(implementation = InvitationNotFound::class,)
+                    ),
+                ],
+            ),
+            ApiResponse(
+                responseCode = "403",
+                description = "User is already a member of the channel.",
+                content = [
+                    Content(
+                        mediaType = "application/problem+json",
+                        schema = Schema(implementation = UserAlreadyInChannel::class,)
+                    ),
+                ],
+            ),
+        ]
     )
     fun declineInvitation(
         @PathVariable id: Int,
@@ -428,12 +796,12 @@ class ChannelController(
                     DeclineChannelInvitationError.UserIsAlreadyMember ->
                         Problem.response(
                             HttpStatus.FORBIDDEN.value(),
-                            Problem.userAlreadyInChannel(user.user.userId, id, Uris.Channels.declineInvitation(id)),
+                            UserAlreadyInChannel(Uris.Channels.declineInvitation(id)),
                         )
                     DeclineChannelInvitationError.InvitationNotFound ->
                         Problem.response(
                             HttpStatus.NOT_FOUND.value(),
-                            Problem.invitationNotFound(id, Uris.Channels.declineInvitation(id)),
+                            InvitationNotFound(Uris.Channels.declineInvitation(id)),
                         )
                 }
         }
@@ -441,7 +809,43 @@ class ChannelController(
     @DeleteMapping(Uris.Channels.MEMBERS)
     @Operation(
         summary = "Remove a member",
-        description = "Remove a member from a channel."
+        description = "Remove a member from a channel.",
+        responses = [
+            ApiResponse(
+                responseCode = "204",
+                description = "Member removed successfully.",
+            ),
+            ApiResponse(
+                responseCode = "404",
+                description = "Channel not found.",
+                content = [
+                    Content(
+                        mediaType = "application/problem+json",
+                        schema = Schema(implementation = ChannelNotFound::class,)
+                    ),
+                ],
+            ),
+            ApiResponse(
+                responseCode = "403",
+                description = "User is the owner of the channel.",
+                content = [
+                    Content(
+                        mediaType = "application/problem+json",
+                        schema = Schema(implementation = UserIsOwner::class,)
+                    ),
+                ],
+            ),
+            ApiResponse(
+                responseCode = "403",
+                description = "User is not a member of the channel.",
+                content = [
+                    Content(
+                        mediaType = "application/problem+json",
+                        schema = Schema(implementation = UserNotInChannel::class,)
+                    ),
+                ],
+            ),
+        ]
     )
     fun leaveChannel(
         @PathVariable id: Int,
@@ -457,17 +861,17 @@ class ChannelController(
                     DeleteMembershipError.UserIsOwner ->
                         Problem.response(
                             HttpStatus.FORBIDDEN.value(),
-                            Problem.userIsOwner(user.user.userId, id, Uris.Channels.leaveChannel(id)),
+                            UserIsOwner(Uris.Channels.leaveChannel(id)),
                         )
                     DeleteMembershipError.UserIsNotMember ->
                         Problem.response(
                             HttpStatus.FORBIDDEN.value(),
-                            Problem.userNotInChannel(user.user.userId, id, Uris.Channels.leaveChannel(id)),
+                            UserNotInChannel(Uris.Channels.leaveChannel(id)),
                         )
                     DeleteMembershipError.ChannelNotFound ->
                         Problem.response(
                             HttpStatus.NOT_FOUND.value(),
-                            Problem.channelNotFound(id, Uris.Channels.leaveChannel(id)),
+                            ChannelNotFound(Uris.Channels.leaveChannel(id)),
                         )
                 }
         }
