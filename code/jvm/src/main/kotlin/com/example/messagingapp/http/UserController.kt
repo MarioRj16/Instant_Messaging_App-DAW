@@ -40,6 +40,32 @@ class UserController(
     @Operation(
         summary = "Create a new user",
         description = "Provide user details to create a new user",
+        responses = [
+            io.swagger.v3.oas.annotations.responses.ApiResponse(
+                responseCode = "201",
+                description = "User created",
+                content = [
+                    io.swagger.v3.oas.annotations.media.Content(
+                        mediaType = "application/json",
+                        schema = io.swagger.v3.oas.annotations.media.Schema(
+                            implementation = UserOutputModel::class,
+                        ),
+                    ),
+                ],
+            ),
+            io.swagger.v3.oas.annotations.responses.ApiResponse(
+                responseCode = "400",
+                description = "Bad request",
+                content = [
+                    io.swagger.v3.oas.annotations.media.Content(
+                        mediaType = "application/json",
+                        schema = io.swagger.v3.oas.annotations.media.Schema(
+                            implementation = Problem::class,
+                        ),
+                    ),
+                ],
+            ),
+        ],
     )
     fun register(
         @RequestBody input: UserCreateInputModel,
@@ -83,6 +109,32 @@ class UserController(
     @Operation(
         summary = "Login",
         description = "Provide user credentials to login",
+        responses = [
+            io.swagger.v3.oas.annotations.responses.ApiResponse(
+                responseCode = "200",
+                description = "User logged in",
+                content = [
+                    io.swagger.v3.oas.annotations.media.Content(
+                        mediaType = "application/json",
+                        schema = io.swagger.v3.oas.annotations.media.Schema(
+                            implementation = LoginOutputModel::class,
+                        ),
+                    ),
+                ],
+            ),
+            io.swagger.v3.oas.annotations.responses.ApiResponse(
+                responseCode = "401",
+                description = "Unauthorized",
+                content = [
+                    io.swagger.v3.oas.annotations.media.Content(
+                        mediaType = "application/json",
+                        schema = io.swagger.v3.oas.annotations.media.Schema(
+                            implementation = Problem::class,
+                        ),
+                    ),
+                ],
+            ),
+        ],
     )
     fun login(
         @RequestBody user: LoginInputModel,
@@ -115,6 +167,24 @@ class UserController(
     @Operation(
         summary = "Logout",
         description = "Logout the user",
+        responses = [
+            io.swagger.v3.oas.annotations.responses.ApiResponse(
+                responseCode = "204",
+                description = "User logged out",
+            ),
+            io.swagger.v3.oas.annotations.responses.ApiResponse(
+                responseCode = "500",
+                description = "Internal server error",
+                content = [
+                    io.swagger.v3.oas.annotations.media.Content(
+                        mediaType = "application/json",
+                        schema = io.swagger.v3.oas.annotations.media.Schema(
+                            implementation = Problem::class,
+                        ),
+                    ),
+                ],
+            ),
+        ],
     )
     fun logout(user: AuthenticatedUser): ResponseEntity<*> {
         return try {
@@ -132,6 +202,20 @@ class UserController(
     @Operation(
         summary = "Invite",
         description = "Invite a new user",
+        responses = [
+            io.swagger.v3.oas.annotations.responses.ApiResponse(
+                responseCode = "201",
+                description = "Invitation created",
+                content = [
+                    io.swagger.v3.oas.annotations.media.Content(
+                        mediaType = "application/json",
+                        schema = io.swagger.v3.oas.annotations.media.Schema(
+                            implementation = RegistrationInvitationCreateOutputModel::class,
+                        ),
+                    ),
+                ],
+            ),
+        ],
     )
     fun invite(user: AuthenticatedUser): ResponseEntity<RegistrationInvitationCreateOutputModel> {
         val res = userService.createRegistrationInvitation() as Success // It's always a success
@@ -145,6 +229,20 @@ class UserController(
     @Operation(
         summary = "Home",
         description = "Get user details",
+        responses = [
+            io.swagger.v3.oas.annotations.responses.ApiResponse(
+                responseCode = "200",
+                description = "User details",
+                content = [
+                    io.swagger.v3.oas.annotations.media.Content(
+                        mediaType = "application/json",
+                        schema = io.swagger.v3.oas.annotations.media.Schema(
+                            implementation = UserOutputModel::class,
+                        ),
+                    ),
+                ],
+            ),
+        ],
     )
     fun home(user: AuthenticatedUser): ResponseEntity<UserOutputModel> {
         return ResponseEntity(

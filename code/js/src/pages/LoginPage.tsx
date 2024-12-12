@@ -28,7 +28,7 @@ const LoginPage: React.FC = () => {
 
             if (response.contentType === "application/json") {
                     const token = response.json as LoginOutputModel;
-                    setAuthToken(token.token);
+                    //setAuthToken(token.token);
                     navigate('/');
                 } else {
                     // Handle error response in ProblemModel format

@@ -54,6 +54,11 @@ kotlin {
     }
 }
 
+val dockerImageTagJvm = "chimp"
+val dockerImageTagNginx = "nginx"
+val dockerImageTagPostgres = "db-postgres"
+val dockerImageTagUbuntu = "ubuntu"
+
 tasks.withType<Test> {
     useJUnitPlatform()
     if (System.getenv("DB_URL") == null) {
@@ -66,7 +71,7 @@ tasks.withType<Test> {
 }
 
 task<Exec>("startDB") {
-    commandLine("docker", "compose", "up", "-d", "db-postgres")
+    commandLine("docker", "compose", "up", "-d", dockerImageTagPostgres)
 }
 
 task<Exec>("waitForDB") {
@@ -86,4 +91,49 @@ tasks.named("check") {
 tasks.named<BootRun>("bootRun") {
     dependsOn("startDB")
     finalizedBy("stopDB")
+}
+
+// Docker related tasks
+
+task<Copy>("extractUberJar") {
+    dependsOn("assemble")
+    // opens the JAR containing everything...
+    from(zipTree(layout.buildDirectory.file("libs/${rootProject.name}-$version.jar").get().toString()))
+    // ... into the 'build/dependency' folder
+    into("build/dependency")
+}
+
+task<Exec>("buildImageJvm") {
+    dependsOn("extractUberJar")
+    commandLine("docker", "build", "-t", dockerImageTagJvm, "-f", "docker/Dockerfile-chimp", ".")
+}
+task<Exec>("buildImageNginx") {
+    commandLine("docker", "build", "-t", dockerImageTagNginx, "-f", "docker/nginx/Dockerfile-nginx", ".")
+}
+task<Exec>("buildImagePostgres") {
+    commandLine(
+        "docker",
+        "build",
+        "-t",
+        dockerImageTagPostgres,
+        "-f",
+        "docker/postgres/Dockerfile-postgres",
+        "docker/postgres",
+    )
+}
+task<Exec>("buildImageUbuntu") {
+    commandLine("docker", "build", "-t", dockerImageTagUbuntu, "-f", "docker/Dockerfile-ubuntu", ".")
+}
+task("buildImageAll") {
+    dependsOn("buildImageJvm")
+    dependsOn("buildImageNginx")
+    dependsOn("buildImagePostgres")
+    dependsOn("buildImageUbuntu")
+}
+task<Exec>("composeUp") {
+    commandLine("docker", "compose", "up", "--build", "--force-recreate", "--scale", "chimp=3")
+    dependsOn("extractUberJar")
+}
+task<Exec>("composeDown") {
+    commandLine("docker", "compose", "down")
 }

@@ -44,7 +44,7 @@ const RegisterPage: React.FC = () => {
 
                     if (loginResponse.contentType === "application/json") {
                         const token = loginResponse.json as LoginOutputModel;
-                        setAuthToken(token.token);
+                        //setAuthToken(token.token);
                         navigate('/');
                     } else {
                         const loginError = loginResponse.json as ProblemModel;
