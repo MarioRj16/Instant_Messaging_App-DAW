@@ -89,13 +89,13 @@ export async function declineInvitation(id: number) {
 
 
 export async function leaveChannel(id: number) {
-    const uri= replaceParams('/channel/{id}/memberships',{id:id});
+    const uri= replaceParams('/channel/{id}/members',{id:id});
     const cookies= getAuthToken()
     return await callApi(uri, Method.DELETE, undefined,cookies);
 }
 
 export async function inviteMember(id:number, body:InviteMemberInputModel){
-    const uri= replaceParams('/channel/{id}/memberships',{id:id});
+    const uri= replaceParams('/channel/{id}/members',{id:id});
     const cookies= getAuthToken()
     return await callApi<InviteMemberInputModel, null>(uri, Method.POST,body,cookies);
 }
