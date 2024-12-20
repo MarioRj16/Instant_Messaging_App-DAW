@@ -1,9 +1,11 @@
 package com.example.messagingapp.http.pipeline
 
 import com.example.messagingapp.domain.AuthenticatedUser
+import com.example.messagingapp.http.model.output.Problem
 import jakarta.servlet.http.Cookie
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
+import java.net.URI
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Component
 import org.springframework.web.method.HandlerMethod
@@ -32,6 +34,15 @@ class AuthenticationInterceptor(
             return if (user == null) {
                 response.status = 401
                 response.addHeader(NAME_WWW_AUTHENTICATE_HEADER, RequestTokenProcessor.SCHEME)
+                response.contentType = "application/problem+json"
+                response.writer.write(
+                    Problem(
+                        type = Problem.INVALID_TOKEN,
+                        title = "You are not authorized to access this resource",
+                        detail = "Please provide a valid token",
+                        instance = URI(request.requestURI),
+                    ).toJson()
+                )
                 false
             } else {
                 AuthenticatedUserArgumentResolver.addUserTo(user, request)

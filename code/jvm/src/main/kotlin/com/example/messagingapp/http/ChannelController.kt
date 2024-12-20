@@ -841,7 +841,7 @@ class ChannelController(
                 content = [
                     Content(
                         mediaType = "application/problem+json",
-                        schema = Schema(implementation = UserNotInChannel::class,)
+                        schema = Schema(implementation = UserNotInChannel::class)
                     ),
                 ],
             ),

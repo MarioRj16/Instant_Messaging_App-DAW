@@ -1,9 +1,10 @@
 package com.example.messagingapp.http.model.output
 
+import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import org.springframework.http.ResponseEntity
 import java.net.URI
 
-abstract class Problem(
+open class Problem(
     val type: URI,
     open val title: String,
     open val detail: String? = null,
@@ -26,6 +27,7 @@ abstract class Problem(
         val INVALID_PAGINATION = URI("$BASE_URI/invalid-pagination")
 
         // User problems
+        val INVALID_TOKEN = URI("$BASE_URI/invalid-token")
         val INVITATION_CODE_NOT_VALID = URI("$BASE_URI/invitation-code-not-valid")
         val USERNAME_ALREADY_EXISTS = URI("$BASE_URI/username-already-exists")
         val USERNAME_NOT_VALID = URI("$BASE_URI/username-not-valid")
@@ -47,5 +49,10 @@ abstract class Problem(
         val USER_IS_OWNER = URI("$BASE_URI/user-is-owner")
 
         val INTERNAL_SERVER_ERROR = URI("$BASE_URI/internal-server-error")
+    }
+
+    fun toJson(): String {
+        val mapper = jacksonObjectMapper()
+        return mapper.writeValueAsString(this)
     }
 }
