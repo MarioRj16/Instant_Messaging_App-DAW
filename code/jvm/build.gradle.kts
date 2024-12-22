@@ -103,33 +103,6 @@ task<Copy>("extractUberJar") {
     into("build/dependency")
 }
 
-task<Exec>("buildImageJvm") {
-    dependsOn("extractUberJar")
-    commandLine("docker", "build", "-t", dockerImageTagJvm, "-f", "docker/Dockerfile-chimp", ".")
-}
-task<Exec>("buildImageNginx") {
-    commandLine("docker", "build", "-t", dockerImageTagNginx, "-f", "docker/nginx/Dockerfile-nginx", ".")
-}
-task<Exec>("buildImagePostgres") {
-    commandLine(
-        "docker",
-        "build",
-        "-t",
-        dockerImageTagPostgres,
-        "-f",
-        "docker/postgres/Dockerfile-postgres",
-        "docker/postgres",
-    )
-}
-task<Exec>("buildImageUbuntu") {
-    commandLine("docker", "build", "-t", dockerImageTagUbuntu, "-f", "docker/Dockerfile-ubuntu", ".")
-}
-task("buildImageAll") {
-    dependsOn("buildImageJvm")
-    dependsOn("buildImageNginx")
-    dependsOn("buildImagePostgres")
-    dependsOn("buildImageUbuntu")
-}
 task<Exec>("composeUp") {
     commandLine("docker", "compose", "up", "--build", "--force-recreate", "--scale", "chimp=3")
     dependsOn("extractUberJar")
